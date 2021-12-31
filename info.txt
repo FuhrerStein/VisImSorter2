@@ -1,0 +1,40 @@
+
+# todo: option to change subfolder naming scheme (add color into the name, number of files)
+# todo: search similar images to sample image or sample folder with images
+# todo: compare using 3D histograms
+# todo: fix: in case of low
+# todo: figure out what to do if two files have the same name and belong to the same folder
+
+# todo: modify sorting algorithm so that final number of folders is roughly equal to desired
+# todo: initial grouping is made only using image pairs rather than group pairs
+# todo: when searching for closest pairs, sort also by other bands, not only by HSV hue
+
+# todo: option to group only by pixel count
+# todo: asynchronous interface: enable to change settings while scanning
+# todo: scan forders and calculate difference between images in each
+# todo: convert image_DB into numpy array
+
+# todo: rewrite stage2_regroup into using pool in multiprocessing mode
+
+
+'''Алгоритм выделения связных компонент
+
+В алгоритме выделения связных компонент задается входной параметр R и в графе удаляются все ребра, для которых
+«расстояния» больше R. Соединенными остаются только наиболее близкие пары объектов. Смысл алгоритма заключается в
+том, чтобы подобрать такое значение R, лежащее в диапазон всех «расстояний», при котором граф «развалится» на
+несколько связных компонент. Полученные компоненты и есть кластеры.
+
+Для подбора параметра R обычно строится гистограмма распределений попарных расстояний. В задачах с хорошо выраженной
+кластерной структурой данных на гистограмме будет два пика – один соответствует внутрикластерным расстояниям,
+второй – межкластерным расстояния. Параметр R подбирается из зоны минимума между этими пиками. При этом управлять
+количеством кластеров при помощи порога расстояния довольно затруднительно.
+
+
+Алгоритм минимального покрывающего дерева
+
+Алгоритм минимального покрывающего дерева сначала строит на графе минимальное покрывающее дерево,
+а затем последовательно удаляет ребра с наибольшим весом.
+
+
+
+'''
