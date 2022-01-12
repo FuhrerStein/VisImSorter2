@@ -20,6 +20,7 @@ class PaintSheet(QWidget):
         self.hide_marks_timer.timeout.connect(self.hihe_marks)
         self.hide_marks_timer.setInterval(1800)
         self.hide_marks_timer.setSingleShot(True)
+        self.force_sizes = None
 
 
     def hihe_marks(self):
@@ -28,6 +29,12 @@ class PaintSheet(QWidget):
 
     def paintEvent(self, event):
         self.painter = QPainter(self)
+        if self.force_sizes:
+            size_l = self.force_sizes[0] * min(self.width() * (1 - self.separator_line) / self.force_sizes[0].width(),
+                                              self.height() / self.force_sizes[0].height())
+            size_r = self.force_sizes[1] * min(self.width() * (1 - self.separator_line) / self.force_sizes[1].width(),
+                                              self.height() / self.force_sizes[1].height())
+            width_forced = max(size_l.width(), size_r.width())
 
         if type(self.pixmap_l) is QPixmap:
             size = self.pixmap_l.size() * min(self.width() * self.separator_line / self.pixmap_l.width(), self.height() / self.pixmap_l.height())
@@ -42,6 +49,8 @@ class PaintSheet(QWidget):
             #     start_point = QPoint(self.size().width() * 3 / 4 - size.width() / 2, (self.size().height() - size.height()) / 2)
             # else:
             start_point = QPoint(self.width() * (self.separator_line) + 10, (self.height() - size.height()) / 2)
+            if self.force_sizes:
+                start_point.setX(self.width() * self.separator_line + 10 + (width_forced - size.width()) / 2)
             draw_rect = QRect(start_point, size)
             self.painter.drawPixmap(draw_rect, self.pixmap_r.scaled(size, Qt.KeepAspectRatio, Qt.SmoothTransformation))
 

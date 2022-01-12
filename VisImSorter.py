@@ -22,7 +22,7 @@ import numpy.ma as ma
 import pandas as pd
 from urllib.parse import unquote
 import psutil
-from PIL import Image, ImageOps, ImageChops
+from PIL import Image, ImageOps, ImageChops, ImageStat
 from PyQt5.QtWidgets import QMessageBox, QFileDialog, QApplication, QMainWindow, QMenu, QAction, QActionGroup
 from PyQt5 import QtCore, QtGui, QtWidgets
 from scipy import ndimage
@@ -35,42 +35,27 @@ import VisImSorterInterface
 pool = mp.Pool
 
 image_paths_db = pd.Series
-image_DB = []
-group_db = []
-distance_db = []
-angles_db = []
-# progress_value = 0
-# progress_max = 0
+image_DB = pd.DataFrame
+distance_db = pd.DataFrame
 image_count = 0
+
+group_db = []
 groups_count = 0
 
-start_folder = ""
+
 new_folder = ""
 new_vector_folder = ""
-# status_text = ""
-search_subdirectories = False
 enforce_equal_folders = 0.
-hg_bands_count = 0
 compare_file_percent = 10
-# selected_color_spaces = []
-# selected_color_subspaces = []
 move_files_not_copy = False
 show_histograms = False
 export_histograms = False
 create_samples_enabled = False
-run_index = 0
-# abort_reason = ""
 gaussian_filter1d = ndimage.filters.gaussian_filter1d
 median_filter = ndimage.filters.median_filter
 gaussian_filter = ndimage.filters.gaussian_filter
 la_norm = np.linalg.norm
 final_sort = 0
-#
-# plain_file_types = ['jpg', 'png', 'jpeg', 'gif']
-# raw_file_types = ['nef', 'dng']
-# all_file_types = plain_file_types + raw_file_types
-
-# image_paths = []
 function_queue = []
 
 
@@ -79,6 +64,8 @@ class Config:
     image_divisions = 1
     compare_by_angles = False
     max_likeness = 100
+    search_subdirectories = False
+    hg_bands_count = 0
 
     enable_stage2_grouping = False
     enable_multiprocessing = True
@@ -91,6 +78,10 @@ class Config:
     target_group_size = 0
     folder_size_min_files = 0
     selected_color_bands = dict()
+    compare_resort = False
+
+    max_pairs = 0
+    start_folder = ""
 
 
 class Data:
@@ -111,21 +102,20 @@ def pixmap_from_image(im):
 
 
 def set_status(status=None, progress_value=None, progress_max=None, abort=False):
-    if status:
+    if status is not None:
         data.status_text = status
         print(status)
-    if progress_max:
+    if progress_max is not None:
         data.progress_max = progress_max
-    if progress_value:
+    if progress_value is not None:
         data.progress_value = progress_value
     if abort:
-        global run_index
-        run_index += 1
+        data.run_index += 1
 
 
 def run_sequence():
     global function_queue
-    local_run_index = run_index
+    local_run_index = data.run_index
 
     if conf.enable_multiprocessing:
         function_queue.append(init_pool)
@@ -172,7 +162,7 @@ def run_sequence():
     while len(function_queue):
         single_function = function_queue.pop(0)
         single_function()
-        if local_run_index != run_index:
+        if local_run_index != data.run_index:
             if conf.enable_multiprocessing:
                 close_pool()
             return
@@ -186,7 +176,6 @@ def run_sequence():
     print(main_win.status_text)
     main_win.progress_max = 100
     main_win.progress_value = 100
-    # set_status()
 
 
 def close_pool():
@@ -201,78 +190,37 @@ def init_pool():
 
 
 def scan_for_images():
-    # global status_text
-    # global start_folder
-    # global search_subdirectories
-    # global run_index
-    # global abort_reason
-    # global image_paths
     global image_paths_db
     set_status("Scanning images...")
-    # main_win.status_text = "Scanning images..."
-    # print(main_win.status_text)
-    # QApplication.processEvents()
-    # types = plain_file_types + raw_file_types
-
     image_paths = []
-    # image_paths_grouped = []
 
-    all_files = glob.glob(start_folder + "/**/*", recursive=search_subdirectories)
+    all_files = glob.glob(conf.start_folder + "/**/*", recursive=conf.search_subdirectories)
 
     for file_extention in all_file_types:
         image_paths.extend(fnmatch.filter(all_files, "*." + file_extention))
+
+    if not len(image_paths):
+        set_status("No images found.", abort=True)
+        return
 
     image_paths = pd.Series([os.path.normpath(im) for im in image_paths]).rename("image_paths")
     image_names = image_paths.apply(os.path.basename).rename("image_names")
     image_paths_db = pd.DataFrame((image_paths, image_names)).T
 
-    if not len(image_paths):
-        set_status("No images found.", abort=True)
-        return
-    # else:
-    #     image_paths = (image_paths)
-
     if conf.group_with_similar_name > 0:
-        image_name_groups = image_names.apply(lambda x: x[:conf.group_with_similar_name]).rename("image_name_groups")
+        image_name_groups = image_names.apply(lambda x: x[:conf.group_with_similar_name])
         image_paths_db["image_name_groups"] = image_name_groups
-        # df = pd.DataFrame((image_names, image_name_groups))
-
-    #     file_name_groups = sorted(image_paths, key=lambda x: os.path.basename(x)[:conf.group_with_similar_name])
-    #     image_paths_grouped = [list(it) for k, it in itertools.groupby(file_name_groups,
-    #                                                                    key=lambda x: os.path.basename(x)[
-    #                                                                                  :conf.group_with_similar_name])]
-    # else:
-    #     image_paths_grouped = [[it] for it in image_paths]
-    # image_paths = image_paths_grouped
 
 
 def generate_image_vectors_and_groups():
     global image_DB
     global image_count
-    # global target_group_size
-    # global target_groups
-    # global progress_max
-    # global progress_value
-    # global group_db
-    # global groups_count
-    # global run_index
-    # global abort_reason
     global pool
-    # global folder_size_min_files
-    # global folder_constraint_type
-    # global folder_constraint_value
-    # global image_paths
 
-    local_run_index = run_index
+    local_run_index = data.run_index
     image_count = len(image_paths_db)
     data.working_bands.clear()
 
-    # progress_max = image_count
-    # progress_value = 0
-
-    image_paths_db["max_hue"] = None
-    image_paths_db["hue_hg"] = None
-    image_paths_db["size"] = None
     for current_color_space, color_subspaces in conf.selected_color_bands.items():
         for band in color_subspaces:
             band_full_name = current_color_space + "_" + band
@@ -283,30 +231,25 @@ def generate_image_vectors_and_groups():
     set_status(progress_max=image_count, progress_value=0)
     image_DB = []
     results = []
-    links_per_task = 12
+    links_per_task = 32
     path_db_chunks = [image_paths_db[i:i + links_per_task] for i in range(0, image_count, links_per_task)]
 
     for path_db_chunk in path_db_chunks:
         task_parameters = (path_db_chunk, conf.selected_color_bands,
-                           hg_bands_count, conf.image_divisions, not conf.search_duplicates)
-        result = pool.apply_async(generate_image_vector, task_parameters,
-                                  callback=generate_image_vector_callback)
+                           conf.hg_bands_count, conf.image_divisions, not conf.search_duplicates)
+        result = pool.apply_async(generate_image_vector, task_parameters, callback=image_vector_callback)
         results.append(result)
 
     for res in results:
         while not res.ready():
             QApplication.processEvents()
             sleep(.05)
-            if local_run_index != run_index:
+            if local_run_index != data.run_index:
                 return
         res.wait()
 
     image_DB = pd.concat(image_DB)
-
-        # image_DB.sort(key=lambda x: x[2])
-    # image_count = len(image_DB)
-    # real_image_count = sum([x[3] for x in image_DB])
-
+    image_count = len(image_DB)
     if image_count == 0:
         set_status("Failed to create image database.", abort=True)
 
@@ -319,167 +262,96 @@ def generate_image_vectors_and_groups():
             conf.target_group_size = int(conf.folder_constraint_value)
             conf.target_groups = int(round(image_count / conf.target_group_size))
 
-    # if local_run_index != run_index:
-    #     return
+    image_DB.reset_index(drop=True, inplace=True)
 
 
-def generate_image_vector_callback(vector_pack):
-
+def image_vector_callback(vector_pack):
     if vector_pack is not None:
         image_DB.append(vector_pack)
-    set_status(f"(1/4) Generating image histograms... ({data.progress_value:d} of "
-                               f"{image_count:d}", data.progress_value + len(vector_pack))
+    set_status(f"(1/4) Generating image histograms ({data.progress_value:d} of "
+               f"{image_count:d})", data.progress_value + len(vector_pack))
 
 
 def create_distance_db():
     global distance_db
-    status = "(2/4) Comparing images "
-    status += "(angles)..." if conf.compare_by_angles else "(distances)..."
-    set_status(status_text)
-    # im_vectors = np.array([i[1] for i in image_DB], dtype=np.int32)
-    # im_vector_sizes = la_norm(im_vectors, axis=1) if conf.compare_by_angles else 1
-    triangle_distance_db_list = []
-    work_indecies = zip(range(1, image_count // 2 + 2), range(image_count - 1, image_count // 2 - 1, -1))
-    work_indecies = list(dict.fromkeys([s for t in work_indecies for s in t]))
-    working_bands_count = len(data.working_bands)
+    local_run_index = data.run_index
 
-    for i, im_index in enumerate(work_indecies):
-        im_db = pd.DataFrame({'im_2': range(im_index)})
-        im_db['im_1'] = im_index
+    status = "(angles)..." if conf.compare_by_angles else "(distances)..."
+    set_status("(2/4) Comparing image " + status)
+    triangle_distance_db_list = []
+    work_indexes = zip(range(1, image_count // 2 + 2), range(image_count - 1, image_count // 2 - 1, -1))
+    work_indexes = list(dict.fromkeys([s for t in work_indexes for s in t]))
+    im_vectors = {}
+    for color_band in data.working_bands:
+        im_vectors[color_band] = np.stack(image_DB[color_band]).astype(np.int32)
+
+    for i, im_index in enumerate(work_indexes):
+        diff_db = pd.DataFrame({'im_2': range(im_index)})
+        diff_db['im_1'] = im_index
+        diff_db['mean_diffs'] = (image_DB.means[:im_index] - image_DB.means[im_index]).abs()
+        if conf.max_likeness:
+            diff_db = diff_db[diff_db.mean_diffs < conf.max_likeness * 2.55].copy()
+        if len(diff_db) == 0:
+            continue
         for color_band in data.working_bands:
-            im_vectors = image_DB[color_band]
             im_vector_sizes = image_DB[color_band + "_size"]
             if conf.compare_by_angles:
-                distances = 1 - np.dot(np.stack(im_vectors[:im_index]).astype(np.uint32), im_vectors[im_index]) / im_vector_sizes[:im_index] / im_vector_sizes[im_index]
+                distances = 1 - np.dot(im_vectors[color_band][diff_db.im_2], im_vectors[color_band][im_index]) \
+                            / im_vector_sizes[diff_db.im_2] / im_vector_sizes[im_index]
             else:
-                distances = la_norm((im_vectors[:im_index] - im_vectors[im_index]), axis=1).astype(int)
-            im_db['dist_' + color_band] = distances
-        # if conf.max_likeness < 100 or not conf.compare_by_angles:
-        #     im_db = im_db[distances < conf.max_likeness]
-        only_dist_db = im_db.iloc[:, 2:]
-        im_db["dist"] = only_dist_db.mean(axis=1)
-        # im_db = im_db["dist"] >
-        im_db = im_db[im_db["dist"] < conf.max_likeness]
+                distances = la_norm((im_vectors[color_band][diff_db.im_2] - im_vectors[color_band][im_index]),
+                                    axis=1).astype(int)
+            diff_db['dist_' + color_band] = distances
+        only_dist_db = diff_db.iloc[:, 3:]
+        diff_db["dist"] = only_dist_db.mean(axis=1)
+        diff_db["size_compare"] = image_DB.megapixels[:im_index] / image_DB.megapixels[im_index]
+        if conf.max_likeness:
+            max_likeness = conf.max_likeness / 100
+            if not conf.compare_by_angles:
+                max_likeness = conf.max_likeness * 300
+            diff_db = diff_db[diff_db["dist"] < max_likeness]
 
-        triangle_distance_db_list.append(im_db)
+        triangle_distance_db_list.append(diff_db)
         set_status(progress_value=i)
-        # progress_value = last_index * 2
         QApplication.processEvents()
+        if local_run_index != data.run_index:
+            return
 
     set_status("(3/4) Final resorting ...")
     QApplication.processEvents()
     distance_db = pd.concat(triangle_distance_db_list)
-    # only_dist_db = distance_db.iloc[:, 2:]
-    # distance_db["dist"] = only_dist_db.apply(sum, axis=1) / only_dist_db.shape[1]
     distance_db.sort_values("dist", inplace=True)
     distance_db.reset_index(drop=True, inplace=True)
-    # distance_db.drop(columns="index", inplace=True)
+    if conf.max_pairs:
+        distance_db = distance_db[:conf.max_pairs].copy()
 
-    # distance_db = np.sort(np.concatenate(triangle_distance_db_list), order='dist')
-
-
-    #     make_angles(last_index)
-    #     progress_value = last_index * 2
-    #     QApplication.processEvents()
-
-    # def make_angles(idx):
-    #     # im_db = np.zeros(last_index, dtype=[('dist', float), ('im_1', int), ('im_2', int)])
-    #     im_db = pd.DataFrame({'im_2': range(idx)})
-    #     im_db['im_1'] = idx
-    #
-    #     if conf.compare_by_angles:
-    #         distances = 1 - np.dot(im_vectors[:idx], im_vectors[idx]) / im_vector_sizes[:idx] / im_vector_sizes[idx]
-    #     else:
-    #         distances = la_norm((im_vectors[:idx] - im_vectors[idx]), axis=1).astype(int)
-    #     im_db['dist'] = distances
-    #
-    #     if conf.max_likeness < 100 or not conf.compare_by_angles:
-    #         im_db = im_db[distances < conf.max_likeness]
-    #     triangle_distance_db_list.append(im_db)
-    #
-    # for last_index in range(1, image_count // 2 + 1):
-    #     make_angles(last_index)
-    #     if image_count > last_index * 2:
-    #         make_angles(image_count - last_index)
-    #     set_status(progress_value=last_index * 2)
-    #
-    #     # progress_value = last_index * 2
-    #     QApplication.processEvents()
-
-    # status_text = "(3/4) Final resorting ..."
-    # QApplication.processEvents()
+    distance_db["size_compare_category"] = 0
+    distance_db["crops"] = None
+    categories = {1: 1, 2: 1.1, 3: 3}
+    for category, threshold in categories.items():
+        distance_db.loc[distance_db["size_compare"] > threshold, "size_compare_category"] = -category
+        distance_db.loc[1 / distance_db["size_compare"] > threshold, "size_compare_category"] = category
 
 
-#
-# def load_image(image_full_name):
-#     try:
-#         if sum([image_full_name.lower().endswith(ex) for ex in raw_file_types]):
-#             f = open(image_full_name, 'rb', buffering=0)  # This is a workaround for opening cyrillic file names
-#             thumb = rawpy.imread(f).extract_thumb()
-#             img_to_read = io.BytesIO(thumb.data)
-#         else:
-#             img_to_read = image_full_name
-#         return reorient_image(Image.open(img_to_read))
-#     except Exception as e:
-#         print("Error reading ", image_full_name, e)
-#
-#
-# def generate_image_vector(image_full_names, color_spaces, color_subspaces, hg_bands, im_divisions, need_hue):
-#     hue_hg = None
-#     average_hg = None
-#     bands_gaussian = hg_bands ** .5 / 6
-#     size = None
-#
-#     def get_band_hg(image):
-#         partial_hg = np.histogram(image, bins=hg_bands, range=(0., 255.))[0]
-#         partial_hg = gaussian_filter(partial_hg, bands_gaussian, mode='nearest')
-#         combined_hg.append(partial_hg)
-#         QApplication.processEvents()
-#
-#     for image_full_name in image_full_names:
-#         img = load_image(image_full_name)
-#         if img is None:
-#             continue
-#         if not size:
-#             size = img.size
-#         img = img.resize((224, 224), resample=Image.BILINEAR)
-#
-#         combined_hg = []
-#         for current_color_space in color_spaces:
-#             converted_image = img.convert(current_color_space)
-#             for band in converted_image.getbands():
-#                 if band not in color_subspaces:
-#                     continue
-#                 band_array = np.asarray(converted_image.getchannel(band))
-#
-#                 for big_part in np.split(band_array, im_divisions):
-#                     for small_part in np.split(big_part, im_divisions, 1):
-#                         get_band_hg(small_part)
-#         combined_hg = np.concatenate(combined_hg)
-#         average_hg = average_hg + combined_hg if average_hg else combined_hg
-#
-#         if need_hue:
-#             hue_hg_one = np.histogram(img.convert("HSV").getchannel("H"), bins=256, range=(0., 255.))[0]
-#             hue_hg = hue_hg + hue_hg_one if hue_hg else hue_hg_one
-#
-#     images_in_row = len(image_full_names)
-#     if images_in_row > 1:
-#         average_hg = average_hg // images_in_row
-#         hue_hg = hue_hg // images_in_row
-#
-#     if need_hue:
-#         max_hue = np.argmax(gaussian_filter1d(hue_hg, 15, mode='wrap').astype(np.uint16)).tolist()
-#         hue_hg = hue_hg.astype(np.uint16)
-#     else:
-#         max_hue = None
-#
-#     if im_divisions > 64:
-#         average_hg = average_hg.astype(np.uint8)
-#     else:
-#         average_hg = average_hg.astype(np.uint16)
-#
-#     return [image_full_names, average_hg, max_hue, images_in_row, hue_hg, size]
-#
+def show_closest_images_gui():
+    if len(distance_db) == 0:
+        set_status("No similar enough images found", abort=True)
+        return
+
+    compare_wnd = CompareGUI()
+    if conf.compare_resort:
+        compare_wnd.resort_pairs3()
+
+    set_status("Preparation complete. Showing image pairs.", 0)
+    QApplication.processEvents()
+
+    compare_wnd.show()
+    while compare_wnd.isVisible():
+        sleep(.1)
+        QApplication.processEvents()
+    compare_wnd.image_delete_candidates.clear()
+    compare_wnd.marked_pairs.clear()
+
 
 def create_simple_groups():
     global group_db
@@ -502,7 +374,7 @@ def create_groups_v4():
     global status_text
     # global target_groups
     global groups_count
-    global run_index
+    # global run_index
     global pool
     global group_db
     global image_DB
@@ -510,7 +382,7 @@ def create_groups_v4():
     global progress_max
     global progress_value
 
-    local_run_index = run_index
+    local_run_index = data.run_index
     batches = 1
     batch = 0
     compare_limit = int(image_count * .1 + 200)
@@ -628,76 +500,47 @@ def create_groups_v4():
     groups_count = len(group_db)
 
 
-def show_closest_images_gui():
-    # global status_text
-    # global progress_max
-    # global progress_value
-    # global abort_reason
-    # global run_index
-
-    # progress_value = 0
-
-
-    if len(distance_db) == 0:
-        # abort_reason = "No similar enough images found"
-        # run_index += 1
-        set_status("No similar enough images found", abort=True)
-        return
-
-    set_status("Preparation complete. Showing image pairs.", 0)
-
-    # status_text = "Preparation complete. Showing image pairs."
-    QApplication.processEvents()
-
-    compare_wnd = CompareGUI()
-    compare_wnd.show()
-    while compare_wnd.isVisible():
-        sleep(.1)
-        QApplication.processEvents()
-    compare_wnd.image_delete_candidates.clear()
-    compare_wnd.marked_pairs.clear()
-
-
-def create_triangle_distance_db():
-    # global progress_value
-    # global status_text
-    # global distance_db
-
-    status_text = "(2/4) Comparing images "
-    status_text += "(angles)..." if conf.compare_by_angles else "(distances)..."
-    set_status(status_text)
-    # if conf.compare_by_angles:
-    #     status_text += "(angles)..."
-    # else:
-    #     status_text += "(distances)..."
-
-    im_vectors = np.array([i[1] for i in image_DB], dtype=np.int32)
-    im_vector_sizes = la_norm(im_vectors, axis=1) if conf.compare_by_angles else 1
-    triangle_distance_db_list = []
-
-    def make_angles(idx):
-        im_db = np.zeros(idx, dtype=[('dist', float), ('im_1', int), ('im_2', int)])
-        if conf.compare_by_angles:
-            distances = 1 - np.dot(im_vectors[:idx], im_vectors[idx]) / im_vector_sizes[:idx] / im_vector_sizes[idx]
-        else:
-            distances = la_norm((im_vectors[:idx] - im_vectors[idx]), axis=1).astype(int)
-        im_db['dist'] = distances
-        im_db['im_1'] = idx
-        im_db['im_2'] = range(idx)
-        if conf.max_likeness < 100 or not conf.compare_by_angles:
-            im_db = im_db[distances < conf.max_likeness]
-        triangle_distance_db_list.append(im_db)
-        if image_count - idx > idx:
-            make_angles(image_count - idx)
-
-    for idx in range(1, image_count // 2):
-        make_angles(idx)
-        progress_value = idx * 2
-        QApplication.processEvents()
-    status_text = "(3/4) Final resorting ..."
-    QApplication.processEvents()
-    distance_db = np.sort(np.concatenate(triangle_distance_db_list), order='dist')
-
+#
+# def create_triangle_distance_db():
+#     # global progress_value
+#     # global status_text
+#     # global distance_db
+#
+#     status_text = "(2/4) Comparing images "
+#     status_text += "(angles)..." if conf.compare_by_angles else "(distances)..."
+#     set_status(status_text)
+#     # if conf.compare_by_angles:
+#     #     status_text += "(angles)..."
+#     # else:
+#     #     status_text += "(distances)..."
+#
+#     im_vectors = np.array([i[1] for i in image_DB], dtype=np.int32)
+#     im_vector_sizes = la_norm(im_vectors, axis=1) if conf.compare_by_angles else 1
+#     triangle_distance_db_list = []
+#
+#     def make_angles(idx):
+#         im_db = np.zeros(idx, dtype=[('dist', float), ('im_1', int), ('im_2', int)])
+#         if conf.compare_by_angles:
+#             distances = 1 - np.dot(im_vectors[:idx], im_vectors[idx]) / im_vector_sizes[:idx] / im_vector_sizes[idx]
+#         else:
+#             distances = la_norm((im_vectors[:idx] - im_vectors[idx]), axis=1).astype(int)
+#         im_db['dist'] = distances
+#         im_db['im_1'] = idx
+#         im_db['im_2'] = range(idx)
+#         if conf.max_likeness < 100 or not conf.compare_by_angles:
+#             im_db = im_db[distances < conf.max_likeness]
+#         triangle_distance_db_list.append(im_db)
+#         if image_count - idx > idx:
+#             make_angles(image_count - idx)
+#
+#     for idx in range(1, image_count // 2):
+#         make_angles(idx)
+#         progress_value = idx * 2
+#         QApplication.processEvents()
+#     status_text = "(3/4) Final resorting ..."
+#     QApplication.processEvents()
+#     distance_db = np.sort(np.concatenate(triangle_distance_db_list), order='dist')
+#
 
 def create_relations_db(im_db, batch, batches, compare_lim):
     global progress_value
@@ -748,12 +591,12 @@ def create_groups_by_similarity():
     global status_text
     # global target_groups
     global groups_count
-    global run_index
+    # global run_index
     global pool
     global group_db
     global distance_db
 
-    local_run_index = run_index
+    local_run_index = data.run_index
     step = 0
 
     group_db = [[[counter]] + image_record[1:4] for counter, image_record in enumerate(image_DB)]
@@ -767,11 +610,11 @@ def create_groups_by_similarity():
             step, image_count - groups_count, image_count - conf.target_groups, groups_count - conf.target_groups)
 
         fill_distance_db(feedback_queue, step)
-        if local_run_index != run_index:
+        if local_run_index != data.run_index:
             return
 
         merge_group_batches()
-        if local_run_index != run_index:
+        if local_run_index != data.run_index:
             return
 
 
@@ -784,11 +627,11 @@ def fill_distance_db(feedback_queue, step):
     global progress_max
     global progress_value
     global groups_count
-    global run_index
+    # global run_index
     global enforce_equal_folders
     global pool
 
-    local_run_index = run_index
+    local_run_index = data.run_index
     progress_max = groups_count
 
     distance_db = []
@@ -815,7 +658,7 @@ def fill_distance_db(feedback_queue, step):
             result = pool.apply_async(fill_distance_db_sub, args=args, callback=fill_distance_db_callback)
             results.append(result)
             QApplication.processEvents()
-            if local_run_index != run_index:
+            if local_run_index != data.run_index:
                 return
 
     while task_running:
@@ -887,10 +730,10 @@ def merge_group_batches():
     global distance_db
     # global target_groups
     global groups_count
-    global run_index
+    # global run_index
     global image_DB
 
-    local_run_index = run_index
+    local_run_index = data.run_index
     removed_count = 0
 
     for g1, g2 in distance_db:
@@ -904,7 +747,7 @@ def merge_group_batches():
         group_db[g1][3] = 0
         group_db[g2][3] = 0
         removed_count += 1
-        if local_run_index != run_index:
+        if local_run_index != data.run_index:
             return
         QApplication.processEvents()
     group_db_filtered = filter(lambda x: x[3] > 0, group_db)
@@ -961,10 +804,10 @@ def stage2_regroup():
     global progress_max
     # global target_group_size
     global enforce_equal_folders
-    global run_index
+    # global run_index
     global status_text
 
-    local_run_index = run_index
+    local_run_index = data.run_index
 
     moved_images = 0
     progress_value = 0
@@ -1016,7 +859,7 @@ def stage2_regroup():
         status_text = "Resorting. Relocated " + str(moved_images) + " files"
         QApplication.processEvents()
 
-        if local_run_index != run_index:
+        if local_run_index != data.run_index:
             break
 
     for i in range(parallel_processes):
@@ -1068,12 +911,12 @@ def move_image_between_groups(task):
 def choose_destination_folder():
     global new_vector_folder
     global new_folder
-    base_folder = start_folder
+    base_folder = conf.start_folder
     destination_folder_index = -1
-    if re.match(".*_sorted_\d\d\d$", start_folder):
-        base_folder = start_folder[:-11]
-    elif re.match(".*_sorted$", start_folder):
-        base_folder = start_folder[:-7]
+    if re.match(".*_sorted_\d\d\d$", conf.start_folder):
+        base_folder = conf.start_folder[:-11]
+    elif re.match(".*_sorted$", conf.start_folder):
+        base_folder = conf.start_folder[:-7]
         destination_folder_index = 0
 
     list_of_indices = sorted(glob.glob(base_folder + "_sorted_[0-9][0-9][0-9]"), reverse=True)
@@ -1099,12 +942,12 @@ def move_files():
     global progress_max
     global progress_value
     global groups_count
-    global run_index
+    # global run_index
     global new_folder
-    global start_folder
+    # global start_folder
     # global folder_size_min_files
 
-    local_run_index = run_index
+    local_run_index = data.run_index
 
     progress_max = groups_count
     status_text = "Sorting done. " + ["Copying ", "Moving "][move_files_not_copy] + "started"
@@ -1138,7 +981,7 @@ def move_files():
                         action(im_path, dir_name + "/")
                     except Exception as e:
                         print("Could not complete file operation ", e)
-                if local_run_index != run_index:
+                if local_run_index != data.run_index:
                     return
                 QApplication.processEvents()
         else:
@@ -1158,12 +1001,12 @@ def move_files():
                     action(im_path, dir_name)
                 except Exception as e:
                     print("Could not complete file operation ", e)
-            if local_run_index != run_index:
+            if local_run_index != data.run_index:
                 return
             QApplication.processEvents()
 
     if move_files_not_copy:
-        start_folder = new_folder
+        conf.start_folder = new_folder
 
 
 def get_group_color_name(group_n):
@@ -1178,8 +1021,8 @@ def get_group_color_name(group_n):
     # colors_list = mc.CSS4_COLORS
     colors_list = mc.XKCD_COLORS
 
-    group_color = np.split(group_db[group_n][1][:hg_bands_count * 3], 3)
-    group_color = ndimage.zoom(group_color, [1, 256 / hg_bands_count], mode='constant')
+    group_color = np.split(group_db[group_n][1][:conf.hg_bands_count * 3], 3)
+    group_color = ndimage.zoom(group_color, [1, 256 / conf.hg_bands_count], mode='constant')
     group_color_one = np.zeros(3)
     group_color_one[0] = np.argmax(gaussian_filter1d(group_color[0], 30, mode="wrap")) / 256
     for i in [1, 2]:
@@ -1198,10 +1041,10 @@ def get_group_color_name(group_n):
 def export_image_vectors():
     global group_db
     global groups_count
-    global run_index
+    # global run_index
     global new_vector_folder
 
-    local_run_index = run_index
+    local_run_index = data.run_index
 
     try:
         os.makedirs(new_vector_folder)
@@ -1218,14 +1061,14 @@ def export_image_vectors():
                 [image_DB[image_index][0][0]] + image_DB[image_index][1] + [image_DB[image_index][2]])
         np.savetxt(new_vector_folder + "Group_vectors_" + str(group_n + 1) + ".csv", save_db, delimiter=";",
                    fmt='%s', newline='\n')
-        if local_run_index != run_index:
+        if local_run_index != data.run_index:
             return
 
 
 def create_samples():
     global group_db
     global groups_count
-    global run_index
+    # global run_index
     global new_vector_folder
     global progress_max
     global progress_value
@@ -1237,7 +1080,7 @@ def create_samples():
         if subspace not in selected_color_subspaces:
             return
 
-    local_run_index = run_index
+    local_run_index = data.run_index
 
     roll_settings = [[0, 1500], [1, 1500],
                      [0, 1500], [1, 1500],
@@ -1264,13 +1107,13 @@ def create_samples():
         for color_band in range(3):
             img_data_band = np.array([], dtype='uint8')
             bins_sum = 0.
-            for hg_bin in range(hg_bands_count):
-                bins_sum += group_db[group_n][1][color_band * hg_bands_count + hg_bin]
+            for hg_bin in range(conf.hg_bands_count):
+                bins_sum += group_db[group_n][1][color_band * conf.hg_bands_count + hg_bin]
             band_coefficient = im_size[0] * im_size[1] / bins_sum / 2
-            for hg_bin in range(hg_bands_count):
-                bin_start = 256 * hg_bin // hg_bands_count
-                bin_end = 256 * (hg_bin + 1) // hg_bands_count
-                band_index = color_band * hg_bands_count + hg_bin
+            for hg_bin in range(conf.hg_bands_count):
+                bin_start = 256 * hg_bin // conf.hg_bands_count
+                bin_end = 256 * (hg_bin + 1) // conf.hg_bands_count
+                band_index = color_band * conf.hg_bands_count + hg_bin
                 bin_value = int(group_db[group_n][1][band_index] * band_coefficient)
                 img_data_chunk = np.linspace(bin_start, bin_end, bin_value, endpoint=False, dtype='uint8')
                 img_data_band = np.append(img_data_band, img_data_chunk)
@@ -1284,7 +1127,7 @@ def create_samples():
             img_data_band = np.vstack([img_data_band, np.flipud(img_data_band)])
             for one_set in roll_settings:
                 img_data_band = roll_rows2(img_data_band, one_set[0], one_set[1])
-                if local_run_index != run_index:
+                if local_run_index != data.run_index:
                     return
 
             gaussian_filter(img_data_band, 2, output=img_data_band, mode='wrap')
@@ -1456,11 +1299,11 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
     image_delete_final = set()
     auto_selection_mode = 2
     size_comparison = 0
+    resort_with_crops = True
 
     def __init__(self):
         super().__init__()
         self.setupUi(self)
-        # self.main_window = main_window
 
         self.label_percent.mousePressEvent = self.toggle_diff_mode
 
@@ -1473,10 +1316,10 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
         self.label_menu.mousePressEvent = self.show_main_menu
 
         self.main_menu = QMenu("Settings")
-        self.main_menu.addAction("Move files and close", self.move_files)
+        self.main_menu.addAction("Move files", self.move_files)
         self.main_menu.addAction("Apply marks (no file moves)", self.process_pairs)
         self.main_menu.addAction("Auto mark up to this", self.mark_pairs_automatic)
-        self.main_menu.addAction("Resort pairs with accurate diff", self.resort_pairs)
+        self.main_menu.addAction("Resort pairs with accurate diff", self.resort_pairs3)
 
         self.sub_menu_selection = self.main_menu.addMenu("When files have equal size")
         self.sub_menu_selection_ag = QActionGroup(self.sub_menu_selection)
@@ -1510,57 +1353,368 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
 
         self.label_name_r.mousePressEvent = self.right_label_click
         self.label_name_l.mousePressEvent = self.left_label_click
+    #
+    # def resort_pairs(self):
+    #     global distance_db
+    #     set_status("(4/4) Resorting pairs...", 0, len(distance_db))
+    #     thumb_cache = {}
+    #     QApplication.processEvents()
+    #     self.hide()
+    #     self.animate_timer.stop()
+    #     main_win.redraw_timer.start()
+    #
+    #     def image_thumb_array_cropping(im_id):
+    #         img = thumb_cache.get(im_id, None)
+    #         if img is None:
+    #             img = load_image(image_DB.image_paths[im_id])
+    #             img = img.convert("RGB").resize((240, 240), resample=Image.BILINEAR)
+    #             thumb_cache[im_id] = img
+    #         return img
+    #     #
+    #     # def calc_distance(image_l_raw, image_r_raw):
+    #     #     if conf.compare_by_angles:
+    #     #         image_l = np.asarray(image_l_raw).reshape(-1)
+    #     #         image_r = np.asarray(image_r_raw).reshape(-1)
+    #     #         distance = 1 - np.dot(image_l[np.newaxis].astype(np.int64), image_r) / la_norm(image_l) / la_norm(
+    #     #             image_r)
+    #     #         return distance[0]
+    #     #     else:
+    #     #         image_d = ImageChops.difference(image_l_raw, image_r_raw)
+    #     #
+    #     #         image_sum_bw = np.asarray(image_d).sum(axis=2)
+    #     #         distance = la_norm(image_sum_bw).astype(int)
+    #     #         return distance
+    #     #
+    #     # def calc_distance2(image_l_raw, image_r_raw):
+    #     #     image_d = ImageChops.difference(image_l_raw, image_r_raw)
+    #     #     # image_d_stat = ImageStat.Stat(image_d)
+    #     #     # return sum(image_d_stat.rms)
+    #     #
+    #     #     # image_sum_bw = np.asarray(image_d).sum(axis=2)
+    #     #     # distance = la_norm(image_sum_bw).astype(int)
+    #     #
+    #     #     distance = la_norm(np.asarray(image_d)).astype(int)
+    #     #     return distance
+    #
+    #     def calc_distance3(image_l_raw, image_r_raw):
+    #         distance = la_norm(np.asarray(image_l_raw).astype(int) - np.asarray(image_r_raw)).astype(int)
+    #         return distance
+    #
+    #     def get_best_crop(image_l, image_r, current_crop=None, best_dist=None):
+    #         if current_crop is None:
+    #             current_crop = {1: 0, 2: 0, 3: 0, 4: 0, -1: 0, -2: 0, -3: 0, -4: 0}
+    #             image_l_c = image_l
+    #             image_r_c = image_r
+    #             crop_tuple_l = [0, 0, 240, 240]
+    #             crop_tuple_r = crop_tuple_l.copy()
+    #         else:
+    #             crop_tuple_l = [current_crop[-1], current_crop[-2], 240 - current_crop[-3], 240 - current_crop[-4]]
+    #             crop_tuple_r = [current_crop[1], current_crop[2], 240 - current_crop[3], 240 - current_crop[4]]
+    #             image_l_c = image_l.crop(crop_tuple_l).resize((240, 240), resample=Image.BILINEAR)
+    #             image_r_c = image_r.crop(crop_tuple_r).resize((240, 240), resample=Image.BILINEAR)
+    #
+    #         if best_dist is None:
+    #             best_dist = calc_distance3(image_l, image_r)
+    #         if sum(current_crop.values()) > 150:
+    #             return current_crop, best_dist
+    #
+    #         cropped_distances = {}
+    #         for crop_part in range(1, 5):
+    #             crop_add = 1 if crop_part < 3 else -1
+    #             crop_tuple_l_plus = crop_tuple_l.copy()
+    #             crop_tuple_r_plus = crop_tuple_r.copy()
+    #             crop_tuple_l_plus[crop_part - 1] += crop_add
+    #             crop_tuple_r_plus[crop_part - 1] += crop_add
+    #             image_l_c_plus = image_l.crop(crop_tuple_l_plus).resize((240, 240), resample=Image.BILINEAR)
+    #             image_r_c_plus = image_r.crop(crop_tuple_r_plus).resize((240, 240), resample=Image.BILINEAR)
+    #             cropped_distances[-crop_part] = calc_distance3(image_l_c_plus, image_r_c)
+    #             cropped_distances[crop_part] = calc_distance3(image_l_c, image_r_c_plus)
+    #
+    #         best_crop = min(cropped_distances, key=cropped_distances.get)
+    #         QApplication.processEvents()
+    #         if cropped_distances[best_crop] > best_dist:
+    #             return current_crop, best_dist
+    #         else:
+    #             current_crop[best_crop] += 1
+    #             return get_best_crop(image_l, image_r, current_crop, cropped_distances[best_crop])
+    #
+    #     def recalc_distance_with_crops(pair_record):
+    #         id_l = pair_record['im_1']
+    #         id_r = pair_record['im_2']
+    #
+    #         image_l = image_thumb_array_cropping(id_l)
+    #         image_r = image_thumb_array_cropping(id_r)
+    #
+    #         best_crop, distance = get_best_crop(image_l, image_r)
+    #         if sum(best_crop.values()) == 0:
+    #             best_crop = None
+    #
+    #         pair_record['dist'] = distance
+    #         pair_record['best_crop'] = best_crop
+    #
+    #         set_status(None, pair_record.name)
+    #         QApplication.processEvents()
+    #         return pair_record
+    #
+    #     distance_db = distance_db.apply(recalc_distance_with_crops, axis=1)
+    #
+    #     distance_db.sort_values("dist", inplace=True)
+    #     distance_db.reset_index(drop=True, inplace=True)
+    #     conf.compare_by_angles = False
+    #
+    #     set_status("Resort complete. Showing image pairs.", 0, 100)
+    #     main_win.redraw_dialog()
+    #     QApplication.processEvents()
+    #     self.preview_sheet.central_pixmap = 0
+    #     self.current_pair = 0
+    #     self.image_delete_candidates.clear()
+    #     self.marked_pairs.clear()
+    #     self.reset_thumbs(True)
+    #     self.show()
+    #     self.update_all_delete_marks()
+    #     self.show_pair()
+    #     self.update_central_lbl()
+    #
+    # def resort_pairs2(self):
+    #     global distance_db
+    #     set_status("(4/4) Resorting pairs...", 0, len(distance_db))
+    #     thumb_cache = {}
+    #     resized_thumb_cache = {}
+    #     QApplication.processEvents()
+    #     self.hide()
+    #     self.animate_timer.stop()
+    #     main_win.redraw_timer.start()
+    #     resolutions = [15, 30, 60, 120, 240, 480]
+    #
+    #     def get_image_thumb(im_id):
+    #         img = thumb_cache.get(im_id, None)
+    #         if img is None:
+    #             img = load_image(image_DB.image_paths[im_id])
+    #             img = img.convert("RGB").resize((480, 480), resample=Image.BILINEAR)
+    #             thumb_cache[im_id] = img
+    #         return img
+    #
+    #     def get_resized_image_thumb(im_id, width, height, res_id):
+    #         img = resized_thumb_cache.get((im_id, width, height), None)
+    #         if img is None:
+    #             if res_id < len(resolutions) - 1:
+    #                 im_res = resolutions[res_id]
+    #                 img = get_resized_image_thumb(im_id, im_res, im_res, res_id + 1)
+    #             else:
+    #                 img = get_image_thumb(im_id)
+    #             img = img.resize((width, height), resample=Image.BILINEAR)
+    #             resized_thumb_cache[(im_id, width, height)] = img
+    #         return img
+    #
+    #     def calc_distance(image_l_raw, image_r_raw):
+    #         return la_norm(np.asarray(image_l_raw).astype(int) - np.asarray(image_r_raw)).astype(int)
+    #
+    #     def calc_distance_batch(image_l_raw, image_r_raw):
+    #         return la_norm(np.asarray(image_l_raw).astype(int) - np.asarray(image_r_raw)).astype(int)
+    #
+    #     def get_best_crop2(im_id_l, im_id_r, res_id, crops, best_dist=None):
+    #         im_res = resolutions[res_id]
+    #
+    #         def get_cropped_img(im_id, crop_tuple):
+    #             resized_width = im_res + crop_tuple[0] + crop_tuple[2]
+    #             resized_height = im_res + crop_tuple[1] + crop_tuple[3]
+    #             resized_img = get_resized_image_thumb(im_id, resized_width, resized_height, res_id + 1)
+    #             croping_tuple = crop_tuple[0], crop_tuple[1], crop_tuple[0] + im_res, crop_tuple[1] + im_res
+    #             return resized_img.crop(croping_tuple)
+    #
+    #         image_l_c = get_cropped_img(im_id_l, crops[:4])
+    #         image_r_c = get_cropped_img(im_id_r, crops[4:])
+    #
+    #         if best_dist is None:
+    #             best_dist = calc_distance(image_l_c, image_r_c)
+    #         if sum(crops) > im_res * .7:
+    #             return best_dist, crops
+    #
+    #         cropped_distances = [0] * 8
+    #
+    #         for crop_part in range(4):
+    #             crop_tuple_l_plus = crops[:4].copy()
+    #             crop_tuple_r_plus = crops[4:].copy()
+    #             crop_tuple_l_plus[crop_part] += 1
+    #             crop_tuple_r_plus[crop_part] += 1
+    #             image_l_c_plus = get_cropped_img(im_id_l, crop_tuple_l_plus)
+    #             image_r_c_plus = get_cropped_img(im_id_r, crop_tuple_r_plus)
+    #             cropped_distances[crop_part] = calc_distance(image_l_c_plus, image_r_c)
+    #             cropped_distances[crop_part + 4] = calc_distance(image_l_c, image_r_c_plus)
+    #
+    #         best_crop_dist = min(cropped_distances)
+    #         best_crop_id = cropped_distances.index(best_crop_dist)
+    #         QApplication.processEvents()
+    #         if best_crop_dist > best_dist:
+    #             resized_thumb_cache.clear()
+    #             return best_dist, crops
+    #         else:
+    #             crops[best_crop_id] += 1
+    #             return get_best_crop2(im_id_l, im_id_r, res_id, crops, best_crop_dist)
+    #
+    #     def recalc_distance_with_crops(pair_record):
+    #         id_l = pair_record['im_1']
+    #         id_r = pair_record['im_2']
+    #
+    #         null_crop = [0] * 4
+    #         crops = null_crop + null_crop
+    #         distance = None
+    #         for res_id in range(len(resolutions)):
+    #             crops = [i * 2 - 1 * (i > 0) for i in crops]
+    #             distance, crops = get_best_crop2(id_l, id_r, res_id, crops)
+    #
+    #         if sum(crops) == 0:
+    #             crops = None
+    #
+    #         pair_record['dist'] = distance
+    #         pair_record['crops'] = crops
+    #
+    #         set_status("Resorting pairs... " + f"({pair_record.name + 1}/{len(distance_db)})", pair_record.name)
+    #         QApplication.processEvents()
+    #         return pair_record
+    #
+    #     distance_db['crops'] = None
+    #     distance_db = distance_db.apply(recalc_distance_with_crops, axis=1)
+    #
+    #     distance_db.sort_values("dist", inplace=True)
+    #     distance_db.reset_index(drop=True, inplace=True)
+    #     conf.compare_by_angles = False
+    #
+    #     set_status("Resort complete. Showing image pairs.", 0, 100)
+    #     main_win.redraw_dialog()
+    #     QApplication.processEvents()
+    #     self.preview_sheet.central_pixmap = 0
+    #     self.current_pair = 0
+    #     self.image_delete_candidates.clear()
+    #     self.marked_pairs.clear()
+    #     self.reset_thumbs(True)
+    #     self.show()
+    #     self.update_all_delete_marks()
+    #     self.show_pair()
+    #     self.update_central_lbl()
 
-    def resort_pairs(self):
+    def resort_pairs3(self):
+        global distance_db
         set_status("(4/4) Resorting pairs...", 0, len(distance_db))
         thumb_cache = {}
+        resized_thumb_cache = {}
         QApplication.processEvents()
+        self.hide()
+        self.animate_timer.stop()
+        main_win.redraw_timer.start()
+        resolutions = [15, 30, 60, 120, 240, 480]
 
-        def image_thumb_array(im_id):
-            img, img_norm = thumb_cache.get(im_id, (None, None))
+        def get_image_thumb(im_id):
+            img = thumb_cache.get(im_id, None)
             if img is None:
-                img = load_image(image_DB.image_paths[im_id]).convert("RGB").resize((256, 256), resample=Image.BILINEAR)
-                if conf.compare_by_angles:
-                    img = np.asarray(img).reshape(-1)
-                    img_norm = la_norm(img)
-                thumb_cache[im_id] = img, img_norm
-            return img, img_norm
+                img = load_image(image_DB.image_paths[im_id])
+                img = img.convert("RGB").resize((480, 480), resample=Image.BILINEAR)
+                thumb_cache[im_id] = img
+            return img
 
-        def recalc_distance(pair_record):
+        def get_resized_image_thumb(im_id, width, height, res_id):
+            img = resized_thumb_cache.get((im_id, width, height), None)
+            if img is None:
+                if res_id < len(resolutions) - 1:
+                    im_res = resolutions[res_id]
+                    img = get_resized_image_thumb(im_id, im_res, im_res, res_id + 1)
+                else:
+                    img = get_image_thumb(im_id)
+                img = img.resize((width, height), resample=Image.BILINEAR)
+                resized_thumb_cache[(im_id, width, height)] = img
+            return img
+
+        def calc_distance(image_l_raw, image_r_raw):
+            return la_norm(np.asarray(image_l_raw).astype(int) - np.asarray(image_r_raw)).astype(int)
+
+        def get_best_crop2(im_id_l, im_id_r, res_id, crops, best_dist=None):
+            im_res = resolutions[res_id]
+            if sum(crops) > im_res * .7:
+                return best_dist, crops
+
+            def get_cropped_img(im_id, crop_tuple):
+                resized_width = im_res + crop_tuple[0] + crop_tuple[2]
+                resized_height = im_res + crop_tuple[1] + crop_tuple[3]
+                resized_img = get_resized_image_thumb(im_id, resized_width, resized_height, res_id + 1)
+                croping_tuple = crop_tuple[0], crop_tuple[1], crop_tuple[0] + im_res, crop_tuple[1] + im_res
+                return resized_img.crop(croping_tuple)
+            #
+            # def make_crops_row(im_id, sub_crops, image_2_raw):
+            #     crops_list = []
+            #     for crop_part in range(4):
+            #         crop_tuple_plus = sub_crops.copy()
+            #         crop_tuple_plus[crop_part] += 1
+            #         crops_list.append(np.ravel(get_cropped_img(im_id, crop_tuple_plus)))
+            #     return np.stack(crops_list).astype(int) - np.ravel(image_2_raw)
+
+            def make_crops_row2(im_id, sub_crops, image_2_raw):
+                crops_list = []
+                for crop_part in range(4):
+                    crop_tuple_plus = sub_crops.copy()
+                    crop_tuple_plus[crop_part] += 1
+                    diff = ImageChops.difference(get_cropped_img(im_id, crop_tuple_plus), image_2_raw)
+                    crops_list.append(np.ravel(diff))
+                return np.stack(crops_list)
+
+            image_l_c = get_cropped_img(im_id_l, crops[:4])
+            image_r_c = get_cropped_img(im_id_r, crops[4:])
+
+            if best_dist is None:
+                best_dist = calc_distance(image_l_c, image_r_c)
+
+            dist1 = la_norm(make_crops_row2(im_id_l, crops[:4], image_r_c), axis=1).astype(int)
+            dist2 = la_norm(make_crops_row2(im_id_r, crops[:4], image_l_c), axis=1).astype(int)
+            cropped_distances = list(dist1) + list(dist2)
+
+            best_crop_dist = min(cropped_distances)
+            best_crop_id = cropped_distances.index(best_crop_dist)
+
+            QApplication.processEvents()
+            if best_crop_dist > best_dist:
+                resized_thumb_cache.clear()
+                return best_dist, crops
+            else:
+                crops[best_crop_id] += 1
+                return get_best_crop2(im_id_l, im_id_r, res_id, crops, best_crop_dist)
+
+        def recalc_distance_with_crops(pair_record):
             id_l = pair_record['im_1']
             id_r = pair_record['im_2']
 
-            image_l, image_l_norm = image_thumb_array(id_l)
-            image_r, image_r_norm = image_thumb_array(id_r)
+            null_crop = [0] * 4
+            crops = null_crop + null_crop
+            distance = None
+            for res_id in range(len(resolutions)):
+                crops = [i * 2 - 1 * (i > 0) for i in crops]
+                distance, crops = get_best_crop2(id_l, id_r, res_id, crops)
 
-            if conf.compare_by_angles:
-                distance = 1 - np.dot(image_l[np.newaxis].astype(np.int64), image_r) / image_l_norm / image_r_norm
-            else:
-                image_plus = ImageChops.subtract(image_l, image_r)
-                image_minus = ImageChops.subtract(image_r, image_l)
-                image_d = ImageChops.add(image_plus, image_minus)
-                image_bands = image_d.split()
-                image_sum_bw = ImageChops.add(ImageChops.add(image_bands[0], image_bands[1], 1, 0), image_bands[2], 1,
-                                              0)
-                distance = la_norm(np.asarray(image_sum_bw)).astype(int)
+            if sum(crops) == 0:
+                crops = None
 
             pair_record['dist'] = distance
-            set_status(None, pair_record.name)
+            pair_record['crops'] = crops
+
+            set_status("Resorting pairs... " + f"({pair_record.name + 1}/{len(distance_db)})", pair_record.name)
             QApplication.processEvents()
+            return pair_record
 
-        distance_db.apply(recalc_distance, axis=1)
+        distance_db['crops'] = None
+        distance_db = distance_db.apply(recalc_distance_with_crops, axis=1)
+
         distance_db.sort_values("dist", inplace=True)
+        distance_db.reset_index(drop=True, inplace=True)
+        conf.compare_by_angles = False
 
-        set_status("Resort complete. Showing image pairs.", 0, len(distance_db))
-        QApplication.processEvents()
+        set_status("Resort complete. Showing image pairs.", 0, 100)
         main_win.redraw_dialog()
-        # conf.compare_by_angles = False
+        QApplication.processEvents()
+        self.preview_sheet.central_pixmap = 0
+        self.current_pair = 0
         self.image_delete_candidates.clear()
         self.marked_pairs.clear()
         self.reset_thumbs(True)
+        self.show()
         self.update_all_delete_marks()
-        self.current_pair = 0
-        self.preview_sheet.central_pixmap = 0
         self.show_pair()
         self.update_central_lbl()
 
@@ -1631,6 +1785,8 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
         self.preview_sheet.pos = None
 
     def mark_pair_visual(self, shift, left_order, right_order):
+        if not len(distance_db):
+            return
         work_pair = (self.current_pair + shift) % len(distance_db)
 
         self.mark_pair(work_pair, left_order, right_order)
@@ -1679,15 +1835,21 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
         self.image_delete_final.update(self.image_delete_candidates.keys())
         pairs_to_delete.update(self.marked_pairs.keys())
 
-        for i, pair in enumerate(distance_db):
-            if pair[1] in self.image_delete_candidates or pair[2] in self.image_delete_candidates:
-                pairs_to_delete.add(i)
+        def check_in_deletions(pair_record, *args, **kwargs):
+            return pair_record in self.image_delete_candidates
 
-        distance_db.drop(index=list(pairs_to_delete), inplace=True)
+        a1 = distance_db.im_1.apply(check_in_deletions, axis=1)
+        a2 = distance_db.im_2.apply(check_in_deletions, axis=1)
+        a = a1 | a2
+
+        distance_db.drop(distance_db[a].index, inplace=True)
+        distance_db.drop(index=pairs_to_delete, inplace=True, errors="ignore")
+
         distance_db.reset_index(drop=True, inplace=True)
 
         print(f"Processed {len(self.marked_pairs)} pairs, deleted {len(pairs_to_delete)} pairs")
-        print(f"Added {len(self.image_delete_final) - old_image_delete_count} images to delete, totaling {len(self.image_delete_final)}")
+        print(
+            f"Added {len(self.image_delete_final) - old_image_delete_count} images to delete, totaling {len(self.image_delete_final)}")
 
         self.image_delete_candidates.clear()
         self.marked_pairs.clear()
@@ -1701,12 +1863,12 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
 
     def move_files(self):
         print("Files to be moved")
-        self.process_pairs()
+        # self.process_pairs()
 
         for im_index in self.image_delete_final:
             full_name = image_DB.image_paths[im_index]
             parent_folder = os.path.dirname(full_name)
-            parent_start_folder = os.path.dirname(start_folder)
+            parent_start_folder = os.path.dirname(conf.start_folder)
             own_subfolder = parent_folder[len(parent_start_folder):]
             new_delete_folder = os.path.join(parent_start_folder, "---") + own_subfolder
             if not os.path.isdir(new_delete_folder):
@@ -1714,27 +1876,27 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
                     os.makedirs(new_delete_folder)
                 except Exception as e:
                     print("Could not create folder", e)
+
             try:
                 shutil.move(full_name, new_delete_folder)
                 if not os.listdir(parent_folder):
                     os.rmdir(parent_folder)
-
             except Exception as e:
                 # todo good message here
                 print("Could not complete file move ", e)
-                return
+                # return
 
         list_images_to_delete = list(self.image_delete_final)
         list_images_to_delete.sort(reverse=True)
-        # image_DB.drop
         image_DB.drop(index=list_images_to_delete, inplace=True)
-        # for im_index in list_images_to_delete:
-        #     image_DB.pop(im_index)
 
+        self.image_delete_final.clear()
         global image_count
         image_count = len(image_DB)
 
-        self.close()
+        self.show_pair()
+
+        # self.close()
 
     def show_main_menu(self, *args, **kwargs):
         self.main_menu.popup(self.label_menu.mapToGlobal(QtCore.QPoint(0, -self.main_menu.sizeHint().height())))
@@ -1775,67 +1937,39 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
         return im, pixmap_obj
 
     def update_central_lbl(self):
+        if not len(distance_db):
+            self.label_percent.setText(f"\nMarked  for deletion {len(self.image_delete_final)} images")
+            return
         im_dist = distance_db.dist[self.current_pair]
+        mean_diffs = distance_db.mean_diffs[self.current_pair]
         first_label_text = f" Pair {self.current_pair + 1} of {len(distance_db)} \nDifference "
         first_label_text += f"{im_dist * 100:.2f}%" if conf.compare_by_angles else f"{im_dist:.0f}"
+        first_label_text += f"\nMean diffs: {mean_diffs:d}"
         first_label_text += "\nDifference mode" if self.draw_diff_mode else "\nSide by side mode"
         first_label_text += f"\nMarked {len(self.marked_pairs)} pairs, {len(self.image_delete_candidates)} + {len(self.image_delete_final)} images"
         self.label_percent.setText(first_label_text)
 
-    #
-    # def size_text(self, img: Image, idx: int, other_img, label):
-    #     color_template = "QLabel { \
-    #                     border-width: 3px;\
-    #                     border-style: solid;\
-    #                     border-color: "
-    #     red_color = "rgb(200, 70, 70);}"
-    #     green_color = "rgb(70, 200, 70);}"
-    #     gray_color = "rgb(70, 70, 70);}"
-    #     size = img.width * img.height
-    #     text = f"Image # {idx + 1}\nof {image_count}"
-    #     text += f"\n {img.width} X {img.height}"
-    #     text += f"\n {size / 1e6:.02f}Mpix"
-    #     bigger = size / other_img.width / other_img.height
-    #     inequality = abs(bigger - 1 / bigger)
-    #
-    #     if inequality < .01:
-    #         text += "\n equal sizes"
-    #         color_template += gray_color
-    #     elif bigger > 3:
-    #         text += "\n much bigger"
-    #         color_template += green_color
-    #     elif bigger > 1.1:
-    #         text += "\n bigger"
-    #         color_template += green_color
-    #     elif bigger > 1:
-    #         text += "\n a bit bigger"
-    #         color_template += green_color
-    #     elif bigger < .33:
-    #         text += "\n much smaller"
-    #         color_template += red_color
-    #     elif bigger < .9:
-    #         text += "\n smaller"
-    #         color_template += red_color
-    #     elif bigger < 1:
-    #         text += "\n a bit smaller"
-    #
-    #     label.setText(text)
-    #     label.setStyleSheet(color_template + red_color)
-
-    def size_label_text(self, idx: str, label, img_size):
-        color_template = "QLabel { \
-                        border-width: 3px;\
-                        border-style: solid;\
-                        border-color: "
+    def size_label_text(self, idx: int):
+        color_template = """QLabel {
+                        border-width: 3px;
+                        border-style: solid;
+                        border-color: """
         red_color = "rgb(200, 70, 70);}"
         green_color = "rgb(70, 200, 70);}"
         gray_color = "rgb(70, 70, 70);}"
 
-        im_id = distance_db['im_' + idx][self.current_pair] + 1
+        label = [None, self.label_size_l, self.label_size_r][idx]
+        if not len(distance_db):
+            label.setStyleSheet(color_template + gray_color)
+            label.setText("No image")
+            return
 
-        text = f"Image # {im_id}\nof {image_count}"
+        im_id = distance_db[f'im_{idx:d}'][self.current_pair]
+        img_size = image_DB.sizes[im_id]
+
+        text = f"Image # {im_id + 1}\nof {image_count}"
         text += f"\n {img_size[0]} X {img_size[1]}"
-        text += f"\n {img_size[0] * img_size[1] / 1e6:.02f} Mpix\n "
+        text += f"\n {image_DB.megapixels[im_id]:.02f} Mpix\n "
 
         size_labels = {0: "equal sizes",
                        1: "a bit bigger",
@@ -1846,56 +1980,92 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
                        -3: "much smaller"
                        }
 
-        text += size_labels[self.size_comparison if idx == "1" else -self.size_comparison]
+        text += size_labels[self.size_comparison if idx == 1 else -self.size_comparison]
         if self.size_comparison == 0:
             color_template += gray_color
-        elif (self.size_comparison > 0) != (idx == "2"):
+        elif (self.size_comparison > 0) != (idx == 2):
             color_template += green_color
         else:
             color_template += red_color
 
+        current_crop = distance_db['crops'][self.current_pair]
+        if current_crop:
+            crop_list = current_crop[:4] if idx == 1 else current_crop[4:]
+            if sum(crop_list):
+                crop_text = f"\n Cropped by ({crop_list[0]}, {crop_list[1]}, {crop_list[2]}, {crop_list[3]})"
+                text += crop_text
+
         label.setText(text)
         label.setStyleSheet(color_template)
 
-    def compare_image_sizes(self):
-        img_l_size = self.image_l.size
-        img_r_size = self.image_r.size
+    def generate_diff_image2(self, image_l, image_r, do_thumb=False, work_pair=None):
+        def make_pixmap(img):
+            qimage_obj = QtGui.QImage(img.tobytes(), img.width, img.height, img.width * 3, QtGui.QImage.Format_RGB888)
+            pixmap_obj = QtGui.QPixmap(qimage_obj)
+            return pixmap_obj
 
-        bigger_l = img_l_size[0] * img_l_size[1] / img_r_size[0] / img_r_size[1]
-        bigger_r = 1 / bigger_l
-        if bigger_l == 1:
-            self.size_comparison = 0
-        elif bigger_l > 3:
-            self.size_comparison = 3
-        elif bigger_l > 1.1:
-            self.size_comparison = 2
-        elif bigger_l > 1:
-            self.size_comparison = 1
-        elif bigger_r > 3:
-            self.size_comparison = -3
-        elif bigger_r > 1.1:
-            self.size_comparison = -2
-        elif bigger_r > 1:
-            self.size_comparison = -1
+        if work_pair is None:
+            work_pair = self.current_pair
+        current_crop = distance_db['crops'][work_pair]
 
-        self.size_label_text("1", self.label_size_l, img_l_size)
-        self.size_label_text("2", self.label_size_r, img_r_size)
+        if current_crop is not None:
+            cropped_size_l = [480 + current_crop[0] + current_crop[2], 480 + current_crop[1] + current_crop[3]]
+            cropped_size_r = [480 + current_crop[4] + current_crop[6], 480 + current_crop[5] + current_crop[7]]
+            crop_l, crop_r = [0] * 4, [0] * 4
+            for i in range(4):
+                direction = i & 1
+                crop_diff = current_crop[i] - current_crop[i + 4]
+                if crop_diff < 0:
+                    crop_l[i] = crop_diff * [image_l.width, image_l.height][direction] / cropped_size_l[direction]
+                elif crop_diff > 0:
+                    crop_r[i] = -crop_diff * [image_r.width, image_r.height][direction] / cropped_size_r[direction]
 
-    def generate_diff_image(self):
-        if self.image_l.height > self.image_r.height:
-            image_r = self.image_r.resize(self.image_l.size, Image.BILINEAR)
-            image_l = self.image_l
-        elif self.image_l.height < self.image_r.height or self.image_l.width != self.image_r.width:
-            image_l = self.image_l.resize(self.image_r.size, Image.BILINEAR)
-            image_r = self.image_r
+                if i > 1:
+                    crop_l[i] = [image_l.width, image_l.height][direction] - crop_l[i]
+                    crop_r[i] = [image_r.width, image_r.height][direction] - crop_r[i]
+
+            image_l = image_l.crop(crop_l)
+            image_r = image_r.crop(crop_r)
+
+            if not do_thumb:
+                self.image_l = image_l
+                self.image_r = image_r
+                self.image_pixmaps[0] = make_pixmap(image_l)
+                self.image_pixmaps[1] = make_pixmap(image_r)
+
+        if do_thumb:
+            image_r = image_r.resize((240, 240), Image.BILINEAR)
+            image_l = image_l.resize((240, 240), Image.BILINEAR)
         else:
-            image_r = self.image_r
-            image_l = self.image_l
+            if image_l.height > image_r.height:
+                image_r = image_r.resize(image_l.size, Image.BILINEAR)
+            elif image_l.height < image_r.height or image_l.width != image_r.width:
+                image_l = image_l.resize(image_r.size, Image.BILINEAR)
 
-        invert_l = ImageOps.invert(image_l)
-        self.image_d = Image.blend(invert_l, image_r, .5)
+        if self.thumb_mode == -3:
+            image_d = Image.blend(ImageOps.invert(image_l), image_r, .5)
+        else:
+            image_d = ImageChops.difference(image_l, image_r)
+
+        if not self.push_colored.isChecked():
+            image_bands = image_d.split()
+            o = -128 if self.thumb_mode == -3 else 0
+            image_sum_bw = ImageChops.add(ImageChops.add(image_bands[0], image_bands[1], 1, o), image_bands[2], 1, o)
+            image_d = image_sum_bw.convert("RGB")
+
+        if self.thumb_mode == -4:
+            image_d = ImageOps.invert(image_d)
+
+        return image_d
 
     def show_pair(self, shift=0):
+        if not len(distance_db):
+            self.size_label_text(1)
+            self.size_label_text(2)
+            for i in range(15):
+                self.preview_sheet.pixmaps[i] = None
+                self.preview_sheet.delete_marks[i] = None
+            return
         self.current_pair += shift
         self.current_pair %= len(distance_db)
         one_step = -1 if shift < 0 else 1
@@ -1914,14 +2084,18 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
         self.label_name_r.setText(path_r)
         self.image_l, self.image_pixmaps[0] = self.load_image_and_pixmap(path_l)
         self.image_r, self.image_pixmaps[1] = self.load_image_and_pixmap(path_r)
-        # self.size_text(self.image_l, id_l, self.image_r, self.label_size_l)
-        # self.size_text(self.image_r, id_r, self.image_l, self.label_size_r)
-        self.compare_image_sizes()
+        self.size_comparison = distance_db["size_compare_category"][self.current_pair]
+        self.size_label_text(1)
+        self.size_label_text(2)
         self.update_central_lbl()
-        self.generate_diff_image()
+        self.image_d = self.generate_diff_image2(self.image_l, self.image_r)
+        if self.thumb_mode == -3:
+            image_d_second = ImageOps.invert(self.image_d)
+        else:
+            image_d_second = self.image_d
 
         self.image_pixmaps[2] = pixmap_from_image(self.image_d)
-        self.image_pixmaps[3] = pixmap_from_image(ImageOps.invert(self.image_d))
+        self.image_pixmaps[3] = pixmap_from_image(image_d_second)
         self.paint_sheet.pos = None
 
         self.preview_sheet.update()
@@ -1946,32 +2120,17 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
                 return
 
     def generate_diff_thumb(self, shift):
+        if not len(distance_db):
+            return
         thumb_id = (self.preview_sheet.central_pixmap + shift) % 15
         if self.preview_sheet.pixmaps[thumb_id]:
             return
         work_pair = (self.current_pair + shift) % len(distance_db)
         id_l = distance_db.im_1[work_pair]
         id_r = distance_db.im_2[work_pair]
-        image_l = load_image(image_DB.image_paths[id_l]).convert("RGB").resize((240, 240), Image.BILINEAR)
-        image_r = load_image(image_DB.image_paths[id_r]).convert("RGB").resize((240, 240), Image.BILINEAR)
-        if self.thumb_mode == -3:
-            image_d = Image.blend(ImageOps.invert(image_l), image_r, .5)
-        else:
-            image_plus = ImageChops.subtract(image_l, image_r)
-            image_minus = ImageChops.subtract(image_r, image_l)
-            image_d = ImageChops.add(image_plus, image_minus)
-
-        if not self.push_colored.isChecked():
-            image_bands = image_d.split()
-            if self.thumb_mode == -3:
-                o = -128
-            else:
-                o = 0
-            image_sum_bw = ImageChops.add(ImageChops.add(image_bands[0], image_bands[1], 1, o), image_bands[2], 1, o)
-            image_d = image_sum_bw.convert("RGB")
-
-        if self.thumb_mode == -4:
-            image_d = ImageOps.invert(image_d)
+        image_l = load_image(image_DB.image_paths[id_l]).convert("RGB")
+        image_r = load_image(image_DB.image_paths[id_r]).convert("RGB")
+        image_d = self.generate_diff_image2(image_l, image_r, True, work_pair)
 
         self.preview_sheet.pixmaps[thumb_id] = pixmap_from_image(image_d)
         self.update_preview_delete_marks(work_pair, thumb_id)
@@ -1979,6 +2138,8 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
         return True
 
     def update_all_delete_marks(self):
+        if not len(distance_db):
+            return
         for i in range(1, 16):
             shift = i // 2 if i % 2 else -i // 2
             thumb_id = (self.preview_sheet.central_pixmap + shift) % 15
@@ -2001,7 +2162,6 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
             self.preview_sheet.delete_marks[thumb_id] = mark_left, mark_right
         else:
             self.preview_sheet.delete_marks[thumb_id] = None
-        # self.preview_sheet.delete_marks[thumb_id] = None
 
     def redraw_animation(self):
         if not self.isVisible():
@@ -2010,6 +2170,8 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
         self.animation_frame = 1 - self.animation_frame
         self.paint_sheet.pixmap_l = self.image_pixmaps[3 - self.animation_frame]
         self.paint_sheet.pixmap_r = self.image_pixmaps[self.animation_frame]
+        if self.image_pixmaps[0] is not None and self.image_pixmaps[1] is not None:
+            self.paint_sheet.force_sizes = self.image_pixmaps[0].size(), self.image_pixmaps[1].size()
         self.label_name_r.setLineWidth(1 + self.animation_frame * 3)
         self.label_name_l.setLineWidth(1 + 3 - self.animation_frame * 3)
         self.paint_sheet.active_frame = self.animation_frame
@@ -2017,28 +2179,21 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
 
 
 class VisImSorterGUI(QMainWindow, VisImSorterInterface.Ui_VisImSorter):
-    # status_text = ""
-    # progress_value = 0
-    # progress_max = 100
-
     def __init__(self):
         super().__init__()
         self.setupUi(self)
-        self.timer = QtCore.QTimer()
+        self.redraw_timer = QtCore.QTimer()
         self.drag_timer = QtCore.QTimer()
         self.font = QtGui.QFont()
         self.init_elements()
 
     def init_elements(self):
-        global start_folder
-        # global main_window
-
-        # main_window = self
+        # global start_folder
 
         self.font.setPointSize(14)
 
-        self.timer.timeout.connect(self.redraw_dialog)
-        self.timer.setInterval(50)
+        self.redraw_timer.timeout.connect(self.redraw_dialog)
+        self.redraw_timer.setInterval(50)
         self.drag_timer.timeout.connect(self.drag_timeout)
         self.drag_timer.setInterval(3000)
 
@@ -2055,9 +2210,13 @@ class VisImSorterGUI(QMainWindow, VisImSorterInterface.Ui_VisImSorter):
         self.slider_image_split_steps.valueChanged.connect(self.slider_image_split_steps_changed)
         self.slider_image_split_steps_changed()
 
-        self.combo_compare_vectors.currentIndexChanged.connect(self.slider_image_max_likeness_changed)
+        self.btn_angles.clicked.connect(self.slider_image_max_likeness_changed)
+        self.btn_distances.clicked.connect(self.slider_image_max_likeness_changed)
         self.slider_image_max_likeness.valueChanged.connect(self.slider_image_max_likeness_changed)
         self.slider_image_max_likeness_changed()
+
+        self.slider_max_pairs.valueChanged.connect(self.slider_max_pairs_changed)
+        self.slider_max_pairs_changed()
 
         self.slider_enforce_equal.valueChanged.connect(self.slider_equal_changed)
         self.slider_equal_changed()
@@ -2066,52 +2225,36 @@ class VisImSorterGUI(QMainWindow, VisImSorterInterface.Ui_VisImSorter):
         self.color_spaces_reselected()
         self.tabWidget.currentChanged.connect(self.duplicate_tab_switched)
 
-        self.init_color_space(self.list_color_spaces_CMYK)
-        self.init_color_space(self.list_color_spaces_HSV)
-        self.init_color_space(self.list_color_spaces_RGB)
-        self.init_color_space(self.list_color_spaces_YCbCr)
+        list_color_spaces = [self.list_color_spaces_CMYK, self.list_color_spaces_HSV,
+                             self.list_color_spaces_RGB, self.list_color_spaces_YCbCr]
+        for c_list in list_color_spaces:
+            [c_list.item(i).setSelected(True) for i in range(3)]
 
         self.btn_stop.clicked.connect(self.stop_button_pressed)
         self.btn_start.clicked.connect(self.start_button_pressed)
         self.progressBar.setVisible(False)
-        self.progressBar.valueChanged.connect(self.update)
+        # self.progressBar.valueChanged.connect(self.update)
         self.enable_elements()
 
         if len(sys.argv) > 1:
             if os.path.isdir(sys.argv[1]):
-                start_folder = sys.argv[1]
+                conf.start_folder = sys.argv[1]
                 self.directory_changed()
 
     def start_button_pressed(self):
-        # global target_groups
-        # global target_group_size
-        # global selected_color_spaces
-        # global selected_color_subspaces
-        global search_subdirectories
         global move_files_not_copy
         global show_histograms
         global export_histograms
-        global run_index
-        global start_folder
+        # global start_folder
         global new_folder
         global create_samples_enabled
         global final_sort
-        # global status_text
-        # global abort_reason
-        # global folder_size_min_files
-        # global folder_size_min_files
-        # global group_with_similar_name
-        # global enable_stage2_grouping
-        # global folder_constraint_type
-        # global folder_constraint_value
-        # global stage1_grouping_type
-        # global enable_multiprocessing
 
-        local_run_index = run_index
+        local_run_index = data.run_index
 
         conf.folder_constraint_type = self.combo_folder_constraints.currentIndex()
         conf.folder_constraint_value = self.spin_num_constraint.value()
-        search_subdirectories = self.check_subdirs_box.isChecked()
+        conf.search_subdirectories = self.check_subdirs_box.isChecked()
         move_files_not_copy = self.radio_move.isChecked()
         show_histograms = self.check_show_histograms.isChecked()
         export_histograms = self.check_export_histograms.isChecked()
@@ -2119,8 +2262,9 @@ class VisImSorterGUI(QMainWindow, VisImSorterInterface.Ui_VisImSorter):
         conf.enable_stage2_grouping = self.check_stage2_grouping.isChecked()
         conf.stage1_grouping_type = self.combo_stage1_grouping.currentIndex()
         conf.enable_multiprocessing = self.check_multiprocessing.isChecked()
-        conf.search_duplicates = not self.tab_unduplicate.isHidden()
-        conf.compare_by_angles = self.combo_compare_vectors.currentIndex() == 1
+        conf.search_duplicates = self.tab_unduplicate.isVisible()
+        conf.compare_by_angles = self.btn_angles.isChecked()
+        conf.compare_resort = self.btn_compare_resort.isChecked()
 
         final_sort = self.combo_final_sort.currentIndex()
         if self.check_equal_name.isChecked():
@@ -2128,19 +2272,13 @@ class VisImSorterGUI(QMainWindow, VisImSorterInterface.Ui_VisImSorter):
         else:
             conf.group_with_similar_name = 0
 
-        # selected_color_spaces = []
-        # selected_color_subspaces = []
         conf.selected_color_bands.clear()
-        # selected_bands_count = 0
 
         for item in self.list_color_spaces.selectedItems():
             space_name = str(item.text())
             w = self.group_colorspaces_all.findChild(QtWidgets.QListWidget, "list_color_spaces_" + space_name)
-            subspaces = [item.text() for item in w.selectedItems()]
+            subspaces = {item.text() for item in w.selectedItems()}
             conf.selected_color_bands[space_name] = subspaces
-            # subspaces = self.get_sub_color_space(space_name)
-            # selected_color_spaces.append(str(item.text()))
-            # selected_color_subspaces += self.get_sub_color_space(item.text())
         selected_bands_count = sum([len(i) for i in conf.selected_color_bands.values()])
 
         if not selected_bands_count:
@@ -2148,39 +2286,25 @@ class VisImSorterGUI(QMainWindow, VisImSorterInterface.Ui_VisImSorter):
                                 "Please select at least one color space and at least one sub-color space")
             return
 
-        self.disable_elements()
+        self.enable_elements(False)
         self.redraw_dialog()
         run_sequence()
-        if local_run_index != run_index:
-            # status_text = abort_reason
-            # self.statusbar.showMessage(self.status_text)
+        if local_run_index != data.run_index:
             self.btn_stop.setText(data.status_text)
             self.btn_stop.setStyleSheet("background-color: rgb(250,150,150)")
         else:
             self.btn_stop.setText(data.status_text)
             self.btn_stop.setStyleSheet("background-color: rgb(150,250,150)")
-            run_index += 1
+            data.run_index += 1
         self.btn_stop.setFont(self.font)
         self.progressBar.setVisible(False)
 
     def stop_button_pressed(self):
-        # global run_index
-        # global abort_reason
         if self.progressBar.isVisible():
-            # run_index += 1
-            # abort_reason = "Process aborted by user."
             set_status("Process aborted by user.", abort=True)
         else:
             self.directory_changed(True)
             self.enable_elements()
-
-    # def get_sub_color_space(self, color_space_name):
-    #     w = self.group_colorspaces_all.findChild(QtWidgets.QListWidget, "list_color_spaces_" + color_space_name)
-    #     return [item.text() for item in w.selectedItems()]
-    #     # subspaces = [item.text() for item in w.selectedItems()]
-    #     # # for item in w.selectedItems():
-    #     # #     subspaces.append(item.text())
-    #     # return subspaces
 
     def color_spaces_reselected(self):
         for index in range(self.horizontalLayout_7.count()):
@@ -2190,54 +2314,40 @@ class VisImSorterGUI(QMainWindow, VisImSorterInterface.Ui_VisImSorter):
                 enabled = items[0].isSelected()
                 self.horizontalLayout_7.itemAt(index).widget().setEnabled(enabled)
 
-    def init_color_space(self, color_space_list):
-        for i in range(color_space_list.count()):
-            item = color_space_list.item(i)
-            if item.text() != "K":
-                item.setSelected(True)
+    def enable_elements(self, standby_mode=True):
+        standby_controls = [self.group_input, self.group_analyze, self.tabWidget,
+                            self.group_move, self.group_final, self.frame_2]
+        [control.setEnabled(standby_mode) for control in standby_controls]
+        self.btn_start.setVisible(standby_mode)
+        self.btn_stop.setVisible(not standby_mode)
 
-    def enable_elements(self):
-        global progress_value
-        self.group_input.setEnabled(True)
-        self.group_analyze.setEnabled(True)
-        self.tabWidget.setEnabled(True)
-        self.group_move.setEnabled(True)
-        self.group_final.setEnabled(True)
-        self.btn_start.setVisible(True)
-        self.btn_stop.setVisible(False)
-        self.btn_stop.setStyleSheet("background-color: rgb(200,150,150)")
-        self.btn_stop.setFont(self.font)
-        progress_value = 0
-        self.redraw_dialog()
-        self.timer.stop()
-        self.duplicate_tab_switched()
+        if standby_mode:
+            self.btn_stop.setStyleSheet("background-color: rgb(200,150,150)")
+            self.btn_stop.setFont(self.font)
+            data.progress_value = 0
+            self.redraw_dialog()
+            self.redraw_timer.stop()
+        else:
+            self.btn_stop.setText("Stop")
+            self.progressBar.setVisible(True)
+            self.redraw_timer.start()
 
-    def disable_elements(self):
-        self.group_input.setEnabled(False)
-        self.group_analyze.setEnabled(False)
-        self.tabWidget.setEnabled(False)
-        self.group_move.setEnabled(False)
-        self.group_final.setEnabled(False)
-        self.btn_start.setVisible(False)
-        self.btn_stop.setText("Stop")
-        self.btn_stop.setVisible(True)
-        self.progressBar.setVisible(True)
         self.duplicate_tab_switched()
-        self.timer.start()
 
     def duplicate_tab_switched(self):
-        self.group_move.setEnabled(self.tab_grouping.isVisible())
-        self.group_final.setEnabled(self.tab_grouping.isVisible())
-        self.groupBox_5.setEnabled(self.tab_grouping.isVisible())
+        grouping = self.tab_grouping.isVisible()
+        self.group_move.setEnabled(grouping)
+        self.group_final.setEnabled(grouping)
+        self.groupBox_5.setEnabled(grouping)
 
     def slider_histogram_bands_changed(self):
-        global hg_bands_count
-        hg_bands_count = self.slider_histogram_bands.value()
-        self.lbl_histogram_bands.setText(str(hg_bands_count))
+        conf.hg_bands_count = self.slider_histogram_bands.value()
+        self.lbl_histogram_bands.setText(str(conf.hg_bands_count))
 
     def slider_image_split_steps_changed(self):
         raw_splits = self.slider_image_split_steps.value()
-        conf.image_divisions = 2 ** raw_splits
+        raw_split_steps = [1, 2, 3, 4, 5, 6, 8, 10, 12, 15, 16, 20, 24, 30]
+        conf.image_divisions = raw_split_steps[raw_splits]
         self.lbl_image_split_steps.setText(str(conf.image_divisions ** 2))
 
     def slider_equal_changed(self):
@@ -2247,17 +2357,23 @@ class VisImSorterGUI(QMainWindow, VisImSorterInterface.Ui_VisImSorter):
         self.lbl_slider_enforce_equal.setText("%d" % (self.slider_enforce_equal.value() / 3) + "%")
 
     def slider_image_max_likeness_changed(self):
-        raw_slider = self.slider_image_max_likeness.value()
-        if self.combo_compare_vectors.currentIndex():
-            self.lbl_image_max_likeness.setText(f"{raw_slider}%")
-            conf.max_likeness = raw_slider / 100
+        conf.max_likeness = self.slider_image_max_likeness.value()
+        if self.btn_angles.isChecked():
+            self.lbl_image_max_likeness.setText(f"{conf.max_likeness}%")
         else:
-            raw_slider *= 655.36
-            conf.max_likeness = raw_slider
-            self.lbl_image_max_likeness.setText(f"{int(raw_slider)}")
+            self.lbl_image_max_likeness.setText(f"{int(conf.max_likeness * 300)}")
 
-        if raw_slider == 100:
+        if conf.max_likeness == 100:
             self.lbl_image_max_likeness.setText("off")
+            conf.max_likeness = 0
+
+    def slider_max_pairs_changed(self):
+        raw_slider = self.slider_max_pairs.value()
+        conf.max_pairs = int(10 * 2.7 ** (0.034 * raw_slider))
+        self.lbl_max_pairs.setText(f"{conf.max_pairs}")
+        if raw_slider == 200:
+            conf.max_pairs = 0
+            self.lbl_max_pairs.setText("all")
 
     def drag_timeout(self):
         self.directory_changed()
@@ -2279,29 +2395,28 @@ class VisImSorterGUI(QMainWindow, VisImSorterInterface.Ui_VisImSorter):
         self.drag_timer.start()
 
     def directory_dropped(self, in_dir):
-        global start_folder
+        # global start_folder
         url_text = unquote(in_dir.mimeData().text())
         firt_path = url_text[8:]
         firt_path_start = url_text[:8]
         if firt_path_start == "file:///":
             if os.path.isdir(firt_path):
-                start_folder = firt_path
+                conf.start_folder = firt_path
                 self.directory_changed()
 
     def directory_changed(self, suppress_text=False):
-        global start_folder
-        global status_text
+        # global start_folder
 
-        if os.path.exists(start_folder):
-            start_folder = os.path.normpath(start_folder)
+        if os.path.exists(conf.start_folder):
+            conf.start_folder = os.path.normpath(conf.start_folder)
             if not suppress_text:
-                status_text = "Ready to start"
+                set_status("Ready to start")
 
-            start_folder_parts = [a + "\\" for a in start_folder.split("\\")]
+            start_folder_parts = [a + "\\" for a in conf.start_folder.split("\\")]
             start_folder_parts2 = [(a + " ") if a[-1] != "\\" else a for b in start_folder_parts for a in b.split(" ")]
             line_length = 0
-            lines_count = max(round(len(start_folder) / 35), 1)
-            line_max = max(len(start_folder) // lines_count, 20)
+            lines_count = max(round(len(conf.start_folder) / 35), 1)
+            line_max = max(len(conf.start_folder) // lines_count, 20)
             button_text = ""
 
             for part_path in start_folder_parts2:
@@ -2317,13 +2432,13 @@ class VisImSorterGUI(QMainWindow, VisImSorterInterface.Ui_VisImSorter):
             self.btn_start.setEnabled(True)
         else:
             if not suppress_text:
-                status_text = "Please select folder"
+                set_status("Please select folder")
             self.select_folder_button.setText("Select folder")
             self.btn_start.setEnabled(False)
 
     def select_folder(self):
-        global start_folder
-        start_folder = QFileDialog.getExistingDirectory(self, "Choose directory", start_folder or "Y:/")
+        # global start_folder
+        conf.start_folder = QFileDialog.getExistingDirectory(self, "Choose directory", conf.start_folder or "Y:/")
         self.directory_changed()
 
     def redraw_dialog(self):
@@ -2331,7 +2446,6 @@ class VisImSorterGUI(QMainWindow, VisImSorterInterface.Ui_VisImSorter):
             self.progressBar.setRange(0, data.progress_max)
         self.progressBar.setValue(int(data.progress_value))
         self.statusbar.showMessage(data.status_text)
-        # self.update()
         QApplication.processEvents()
 
 

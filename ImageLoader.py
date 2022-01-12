@@ -2,7 +2,7 @@ import io
 import rawpy
 import numpy as np
 import pandas as pd
-from PIL import Image
+from PIL import Image, ImageStat
 from scipy import ndimage
 
 plain_file_types = ['jpg', 'png', 'jpeg', 'gif']
@@ -56,29 +56,31 @@ def load_image(image_full_name):
 
 def generate_image_vector(image_full_names, selected_color_bands: dict, hg_bands, im_divisions, need_hue):
     bands_gaussian = hg_bands ** .5 / 6
-    convert_to = np.uint8 if im_divisions > 64 else np.uint16
+    convert_to = np.uint8 if im_divisions > 15 else np.uint16
 
     def extract_image_data(im_record):
         img = load_image(im_record.image_paths)
         if img is None:
             return
         im_record["sizes"] = img.size
-        img = img.resize((224, 224), resample=Image.BILINEAR)
+        im_record["megapixels"] = img.size[0] * img.size[1] / 1e6
+        img = img.resize((240, 240), resample=Image.BILINEAR)
+        img_stat = ImageStat.Stat(img.convert("RGB"))
+        im_record["means"] = int(sum(img_stat.mean) // 3)
         for current_color_space, color_subspaces in selected_color_bands.items():
             converted_image = img.convert(current_color_space)
-            for band in converted_image.getbands():
-                if band in color_subspaces:
-                    combined_hg = []
-                    band_array = np.asarray(converted_image.getchannel(band))
-                    for big_part in np.split(band_array, im_divisions):
-                        for small_part in np.split(big_part, im_divisions, 1):
-                            partial_hg = np.histogram(small_part, bins=hg_bands, range=(0., 255.))[0]
-                            partial_hg = gaussian_filter(partial_hg, bands_gaussian, mode='nearest')
-                            combined_hg.append(partial_hg)
-                    combined_hg = np.concatenate(combined_hg)
-                    combined_hg_size = np.linalg.norm(combined_hg)
-                    im_record[current_color_space + "_" + band] = combined_hg.astype(convert_to)
-                    im_record[current_color_space + "_" + band + "_size"] = combined_hg_size
+            for band in set(converted_image.getbands()) & color_subspaces:
+                combined_hg = []
+                band_array = np.asarray(converted_image.getchannel(band))
+                for big_part in np.split(band_array, im_divisions):
+                    for small_part in np.split(big_part, im_divisions, 1):
+                        partial_hg = np.histogram(small_part, bins=hg_bands, range=(0., 255.))[0]
+                        partial_hg = gaussian_filter(partial_hg, bands_gaussian, mode='nearest')
+                        combined_hg.append(partial_hg)
+                combined_hg = np.concatenate(combined_hg)
+                combined_hg_size = np.linalg.norm(combined_hg)
+                im_record[current_color_space + "_" + band] = combined_hg.astype(convert_to)
+                im_record[current_color_space + "_" + band + "_size"] = combined_hg_size
         if need_hue:
             hue_hg_one = np.histogram(img.convert("HSV").getchannel("H"), bins=256, range=(0., 255.))[0]
             max_hue = np.argmax(gaussian_filter1d(hue_hg_one, 15, mode='wrap').astype(np.uint16)).tolist()

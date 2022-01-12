@@ -101,7 +101,7 @@ class Ui_MainWindow(object):
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.label_size_l.sizePolicy().hasHeightForWidth())
         self.label_size_l.setSizePolicy(sizePolicy)
-        self.label_size_l.setMinimumSize(QtCore.QSize(60, 0))
+        self.label_size_l.setMinimumSize(QtCore.QSize(100, 0))
         font = QtGui.QFont()
         font.setPointSize(12)
         self.label_size_l.setFont(font)
@@ -229,7 +229,7 @@ class Ui_MainWindow(object):
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.label_size_r.sizePolicy().hasHeightForWidth())
         self.label_size_r.setSizePolicy(sizePolicy)
-        self.label_size_r.setMinimumSize(QtCore.QSize(60, 0))
+        self.label_size_r.setMinimumSize(QtCore.QSize(100, 0))
         font = QtGui.QFont()
         font.setPointSize(12)
         self.label_size_r.setFont(font)
@@ -264,7 +264,7 @@ class Ui_MainWindow(object):
 
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
-        MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
+        MainWindow.setWindowTitle(_translate("MainWindow", "Compare images"))
         self.label_percent.setText(_translate("MainWindow", "TextLabel"))
         self.push_colored.setText(_translate("MainWindow", "Colored"))
         self.label_menu.setText(_translate("MainWindow", "  Menu  "))

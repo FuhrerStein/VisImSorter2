@@ -86,7 +86,7 @@
    </font>
   </property>
   <property name="windowTitle">
-   <string>MainWindow</string>
+   <string>Compare images</string>
   </property>
   <widget class="QWidget" name="centralwidget">
    <property name="minimumSize">
@@ -226,7 +226,7 @@
          </property>
          <property name="minimumSize">
           <size>
-           <width>60</width>
+           <width>100</width>
            <height>0</height>
           </size>
          </property>
@@ -505,7 +505,7 @@
          </property>
          <property name="minimumSize">
           <size>
-           <width>60</width>
+           <width>100</width>
            <height>0</height>
           </size>
          </property>

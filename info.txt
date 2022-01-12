@@ -12,7 +12,6 @@
 # todo: option to group only by pixel count
 # todo: asynchronous interface: enable to change settings while scanning
 # todo: scan forders and calculate difference between images in each
-# todo: convert image_DB into numpy array
 
 # todo: rewrite stage2_regroup into using pool in multiprocessing mode
 
