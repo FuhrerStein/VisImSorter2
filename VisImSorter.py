@@ -1353,245 +1353,6 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
 
         self.label_name_r.mousePressEvent = self.right_label_click
         self.label_name_l.mousePressEvent = self.left_label_click
-    #
-    # def resort_pairs(self):
-    #     global distance_db
-    #     set_status("(4/4) Resorting pairs...", 0, len(distance_db))
-    #     thumb_cache = {}
-    #     QApplication.processEvents()
-    #     self.hide()
-    #     self.animate_timer.stop()
-    #     main_win.redraw_timer.start()
-    #
-    #     def image_thumb_array_cropping(im_id):
-    #         img = thumb_cache.get(im_id, None)
-    #         if img is None:
-    #             img = load_image(image_DB.image_paths[im_id])
-    #             img = img.convert("RGB").resize((240, 240), resample=Image.BILINEAR)
-    #             thumb_cache[im_id] = img
-    #         return img
-    #     #
-    #     # def calc_distance(image_l_raw, image_r_raw):
-    #     #     if conf.compare_by_angles:
-    #     #         image_l = np.asarray(image_l_raw).reshape(-1)
-    #     #         image_r = np.asarray(image_r_raw).reshape(-1)
-    #     #         distance = 1 - np.dot(image_l[np.newaxis].astype(np.int64), image_r) / la_norm(image_l) / la_norm(
-    #     #             image_r)
-    #     #         return distance[0]
-    #     #     else:
-    #     #         image_d = ImageChops.difference(image_l_raw, image_r_raw)
-    #     #
-    #     #         image_sum_bw = np.asarray(image_d).sum(axis=2)
-    #     #         distance = la_norm(image_sum_bw).astype(int)
-    #     #         return distance
-    #     #
-    #     # def calc_distance2(image_l_raw, image_r_raw):
-    #     #     image_d = ImageChops.difference(image_l_raw, image_r_raw)
-    #     #     # image_d_stat = ImageStat.Stat(image_d)
-    #     #     # return sum(image_d_stat.rms)
-    #     #
-    #     #     # image_sum_bw = np.asarray(image_d).sum(axis=2)
-    #     #     # distance = la_norm(image_sum_bw).astype(int)
-    #     #
-    #     #     distance = la_norm(np.asarray(image_d)).astype(int)
-    #     #     return distance
-    #
-    #     def calc_distance3(image_l_raw, image_r_raw):
-    #         distance = la_norm(np.asarray(image_l_raw).astype(int) - np.asarray(image_r_raw)).astype(int)
-    #         return distance
-    #
-    #     def get_best_crop(image_l, image_r, current_crop=None, best_dist=None):
-    #         if current_crop is None:
-    #             current_crop = {1: 0, 2: 0, 3: 0, 4: 0, -1: 0, -2: 0, -3: 0, -4: 0}
-    #             image_l_c = image_l
-    #             image_r_c = image_r
-    #             crop_tuple_l = [0, 0, 240, 240]
-    #             crop_tuple_r = crop_tuple_l.copy()
-    #         else:
-    #             crop_tuple_l = [current_crop[-1], current_crop[-2], 240 - current_crop[-3], 240 - current_crop[-4]]
-    #             crop_tuple_r = [current_crop[1], current_crop[2], 240 - current_crop[3], 240 - current_crop[4]]
-    #             image_l_c = image_l.crop(crop_tuple_l).resize((240, 240), resample=Image.BILINEAR)
-    #             image_r_c = image_r.crop(crop_tuple_r).resize((240, 240), resample=Image.BILINEAR)
-    #
-    #         if best_dist is None:
-    #             best_dist = calc_distance3(image_l, image_r)
-    #         if sum(current_crop.values()) > 150:
-    #             return current_crop, best_dist
-    #
-    #         cropped_distances = {}
-    #         for crop_part in range(1, 5):
-    #             crop_add = 1 if crop_part < 3 else -1
-    #             crop_tuple_l_plus = crop_tuple_l.copy()
-    #             crop_tuple_r_plus = crop_tuple_r.copy()
-    #             crop_tuple_l_plus[crop_part - 1] += crop_add
-    #             crop_tuple_r_plus[crop_part - 1] += crop_add
-    #             image_l_c_plus = image_l.crop(crop_tuple_l_plus).resize((240, 240), resample=Image.BILINEAR)
-    #             image_r_c_plus = image_r.crop(crop_tuple_r_plus).resize((240, 240), resample=Image.BILINEAR)
-    #             cropped_distances[-crop_part] = calc_distance3(image_l_c_plus, image_r_c)
-    #             cropped_distances[crop_part] = calc_distance3(image_l_c, image_r_c_plus)
-    #
-    #         best_crop = min(cropped_distances, key=cropped_distances.get)
-    #         QApplication.processEvents()
-    #         if cropped_distances[best_crop] > best_dist:
-    #             return current_crop, best_dist
-    #         else:
-    #             current_crop[best_crop] += 1
-    #             return get_best_crop(image_l, image_r, current_crop, cropped_distances[best_crop])
-    #
-    #     def recalc_distance_with_crops(pair_record):
-    #         id_l = pair_record['im_1']
-    #         id_r = pair_record['im_2']
-    #
-    #         image_l = image_thumb_array_cropping(id_l)
-    #         image_r = image_thumb_array_cropping(id_r)
-    #
-    #         best_crop, distance = get_best_crop(image_l, image_r)
-    #         if sum(best_crop.values()) == 0:
-    #             best_crop = None
-    #
-    #         pair_record['dist'] = distance
-    #         pair_record['best_crop'] = best_crop
-    #
-    #         set_status(None, pair_record.name)
-    #         QApplication.processEvents()
-    #         return pair_record
-    #
-    #     distance_db = distance_db.apply(recalc_distance_with_crops, axis=1)
-    #
-    #     distance_db.sort_values("dist", inplace=True)
-    #     distance_db.reset_index(drop=True, inplace=True)
-    #     conf.compare_by_angles = False
-    #
-    #     set_status("Resort complete. Showing image pairs.", 0, 100)
-    #     main_win.redraw_dialog()
-    #     QApplication.processEvents()
-    #     self.preview_sheet.central_pixmap = 0
-    #     self.current_pair = 0
-    #     self.image_delete_candidates.clear()
-    #     self.marked_pairs.clear()
-    #     self.reset_thumbs(True)
-    #     self.show()
-    #     self.update_all_delete_marks()
-    #     self.show_pair()
-    #     self.update_central_lbl()
-    #
-    # def resort_pairs2(self):
-    #     global distance_db
-    #     set_status("(4/4) Resorting pairs...", 0, len(distance_db))
-    #     thumb_cache = {}
-    #     resized_thumb_cache = {}
-    #     QApplication.processEvents()
-    #     self.hide()
-    #     self.animate_timer.stop()
-    #     main_win.redraw_timer.start()
-    #     resolutions = [15, 30, 60, 120, 240, 480]
-    #
-    #     def get_image_thumb(im_id):
-    #         img = thumb_cache.get(im_id, None)
-    #         if img is None:
-    #             img = load_image(image_DB.image_paths[im_id])
-    #             img = img.convert("RGB").resize((480, 480), resample=Image.BILINEAR)
-    #             thumb_cache[im_id] = img
-    #         return img
-    #
-    #     def get_resized_image_thumb(im_id, width, height, res_id):
-    #         img = resized_thumb_cache.get((im_id, width, height), None)
-    #         if img is None:
-    #             if res_id < len(resolutions) - 1:
-    #                 im_res = resolutions[res_id]
-    #                 img = get_resized_image_thumb(im_id, im_res, im_res, res_id + 1)
-    #             else:
-    #                 img = get_image_thumb(im_id)
-    #             img = img.resize((width, height), resample=Image.BILINEAR)
-    #             resized_thumb_cache[(im_id, width, height)] = img
-    #         return img
-    #
-    #     def calc_distance(image_l_raw, image_r_raw):
-    #         return la_norm(np.asarray(image_l_raw).astype(int) - np.asarray(image_r_raw)).astype(int)
-    #
-    #     def calc_distance_batch(image_l_raw, image_r_raw):
-    #         return la_norm(np.asarray(image_l_raw).astype(int) - np.asarray(image_r_raw)).astype(int)
-    #
-    #     def get_best_crop2(im_id_l, im_id_r, res_id, crops, best_dist=None):
-    #         im_res = resolutions[res_id]
-    #
-    #         def get_cropped_img(im_id, crop_tuple):
-    #             resized_width = im_res + crop_tuple[0] + crop_tuple[2]
-    #             resized_height = im_res + crop_tuple[1] + crop_tuple[3]
-    #             resized_img = get_resized_image_thumb(im_id, resized_width, resized_height, res_id + 1)
-    #             croping_tuple = crop_tuple[0], crop_tuple[1], crop_tuple[0] + im_res, crop_tuple[1] + im_res
-    #             return resized_img.crop(croping_tuple)
-    #
-    #         image_l_c = get_cropped_img(im_id_l, crops[:4])
-    #         image_r_c = get_cropped_img(im_id_r, crops[4:])
-    #
-    #         if best_dist is None:
-    #             best_dist = calc_distance(image_l_c, image_r_c)
-    #         if sum(crops) > im_res * .7:
-    #             return best_dist, crops
-    #
-    #         cropped_distances = [0] * 8
-    #
-    #         for crop_part in range(4):
-    #             crop_tuple_l_plus = crops[:4].copy()
-    #             crop_tuple_r_plus = crops[4:].copy()
-    #             crop_tuple_l_plus[crop_part] += 1
-    #             crop_tuple_r_plus[crop_part] += 1
-    #             image_l_c_plus = get_cropped_img(im_id_l, crop_tuple_l_plus)
-    #             image_r_c_plus = get_cropped_img(im_id_r, crop_tuple_r_plus)
-    #             cropped_distances[crop_part] = calc_distance(image_l_c_plus, image_r_c)
-    #             cropped_distances[crop_part + 4] = calc_distance(image_l_c, image_r_c_plus)
-    #
-    #         best_crop_dist = min(cropped_distances)
-    #         best_crop_id = cropped_distances.index(best_crop_dist)
-    #         QApplication.processEvents()
-    #         if best_crop_dist > best_dist:
-    #             resized_thumb_cache.clear()
-    #             return best_dist, crops
-    #         else:
-    #             crops[best_crop_id] += 1
-    #             return get_best_crop2(im_id_l, im_id_r, res_id, crops, best_crop_dist)
-    #
-    #     def recalc_distance_with_crops(pair_record):
-    #         id_l = pair_record['im_1']
-    #         id_r = pair_record['im_2']
-    #
-    #         null_crop = [0] * 4
-    #         crops = null_crop + null_crop
-    #         distance = None
-    #         for res_id in range(len(resolutions)):
-    #             crops = [i * 2 - 1 * (i > 0) for i in crops]
-    #             distance, crops = get_best_crop2(id_l, id_r, res_id, crops)
-    #
-    #         if sum(crops) == 0:
-    #             crops = None
-    #
-    #         pair_record['dist'] = distance
-    #         pair_record['crops'] = crops
-    #
-    #         set_status("Resorting pairs... " + f"({pair_record.name + 1}/{len(distance_db)})", pair_record.name)
-    #         QApplication.processEvents()
-    #         return pair_record
-    #
-    #     distance_db['crops'] = None
-    #     distance_db = distance_db.apply(recalc_distance_with_crops, axis=1)
-    #
-    #     distance_db.sort_values("dist", inplace=True)
-    #     distance_db.reset_index(drop=True, inplace=True)
-    #     conf.compare_by_angles = False
-    #
-    #     set_status("Resort complete. Showing image pairs.", 0, 100)
-    #     main_win.redraw_dialog()
-    #     QApplication.processEvents()
-    #     self.preview_sheet.central_pixmap = 0
-    #     self.current_pair = 0
-    #     self.image_delete_candidates.clear()
-    #     self.marked_pairs.clear()
-    #     self.reset_thumbs(True)
-    #     self.show()
-    #     self.update_all_delete_marks()
-    #     self.show_pair()
-    #     self.update_central_lbl()
 
     def resort_pairs3(self):
         global distance_db
@@ -1638,14 +1399,6 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
                 resized_img = get_resized_image_thumb(im_id, resized_width, resized_height, res_id + 1)
                 croping_tuple = crop_tuple[0], crop_tuple[1], crop_tuple[0] + im_res, crop_tuple[1] + im_res
                 return resized_img.crop(croping_tuple)
-            #
-            # def make_crops_row(im_id, sub_crops, image_2_raw):
-            #     crops_list = []
-            #     for crop_part in range(4):
-            #         crop_tuple_plus = sub_crops.copy()
-            #         crop_tuple_plus[crop_part] += 1
-            #         crops_list.append(np.ravel(get_cropped_img(im_id, crop_tuple_plus)))
-            #     return np.stack(crops_list).astype(int) - np.ravel(image_2_raw)
 
             def make_crops_row2(im_id, sub_crops, image_2_raw):
                 crops_list = []
@@ -1662,8 +1415,8 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
             if best_dist is None:
                 best_dist = calc_distance(image_l_c, image_r_c)
 
-            dist1 = la_norm(make_crops_row2(im_id_l, crops[:4], image_r_c), axis=1).astype(int)
-            dist2 = la_norm(make_crops_row2(im_id_r, crops[:4], image_l_c), axis=1).astype(int)
+            dist1 = la_norm(make_crops_row2(im_id_l, crops[:4], image_r_c), axis=1)
+            dist2 = la_norm(make_crops_row2(im_id_r, crops[4:], image_l_c), axis=1)
             cropped_distances = list(dist1) + list(dist2)
 
             best_crop_dist = min(cropped_distances)
@@ -1691,7 +1444,7 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
             if sum(crops) == 0:
                 crops = None
 
-            pair_record['dist'] = distance
+            pair_record['dist'] = int(distance)
             pair_record['crops'] = crops
 
             set_status("Resorting pairs... " + f"({pair_record.name + 1}/{len(distance_db)})", pair_record.name)
