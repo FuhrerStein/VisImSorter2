@@ -1,6 +1,6 @@
 from PyQt5 import QtGui
 from PyQt5.QtCore import QRect, QPoint, Qt, QSize, QTimer
-from PyQt5.QtGui import QPainter, QPen, QPixmap, QBrush, QPolygon
+from PyQt5.QtGui import QPainter, QPen, QPixmap, QBrush, QPolygon, QRadialGradient
 from PyQt5.QtWidgets import QWidget, QApplication
 
 
@@ -21,7 +21,6 @@ class PaintSheet(QWidget):
         self.hide_marks_timer.setInterval(1800)
         self.hide_marks_timer.setSingleShot(True)
         self.force_sizes = None
-
 
     def hihe_marks(self):
         self.pos = None
@@ -45,41 +44,31 @@ class PaintSheet(QWidget):
 
         if type(self.pixmap_r) is QPixmap:
             size = self.pixmap_r.size() * min(self.width() * (1 - self.separator_line) / self.pixmap_r.width(), self.height() / self.pixmap_r.height())
-            # if self.separate_pictures:
-            #     start_point = QPoint(self.size().width() * 3 / 4 - size.width() / 2, (self.size().height() - size.height()) / 2)
-            # else:
-            start_point = QPoint(self.width() * (self.separator_line) + 10, (self.height() - size.height()) / 2)
+            start_point = QPoint(self.width() * self.separator_line + 10, (self.height() - size.height()) / 2)
             if self.force_sizes:
                 start_point.setX(self.width() * self.separator_line + 10 + (width_forced - size.width()) / 2)
             draw_rect = QRect(start_point, size)
             self.painter.drawPixmap(draw_rect, self.pixmap_r.scaled(size, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+            if self.active_frame is not None:
+                green_solid_brush = QBrush(Qt.green)
+                self.painter.setBrush(green_solid_brush)
+                if self.active_frame == 0:
+                    point_x = self.width() * self.separator_line + 20
+                else:
+                    point_x = start_point.x() + size.width() - 40
+                self.painter.drawEllipse(point_x + 2, 10, 20, 20)
+                black_solid_pen = QPen(Qt.black, 2, Qt.SolidLine)
+                self.painter.setPen(black_solid_pen)
+                self.painter.drawEllipse(point_x, 8, 24, 24)
 
         if self.pos:
-            # self.painter.setPen(QPen(Qt.blue, 2, Qt.SolidLine))
             self.painter.setBrush(QBrush(Qt.blue))
             self.painter.drawEllipse(self.pos, 5, 5)
 
         if self.separator_mode:
+            self.painter.setPen(QPen(Qt.blue, 2, Qt.SolidLine))
             x_pos = self.width() * self.separator_line
             self.painter.drawLine(x_pos, 0, x_pos, self.height())
-
-        # green_solid_pen = QPen(Qt.green, 2, Qt.SolidLine)
-        green_solid_brush = QBrush(Qt.green)
-        black_solid_pen = QPen(Qt.black, 2, Qt.SolidLine)
-        # self.painter.setPen(green_solid_pen)
-        self.painter.setBrush(green_solid_brush)
-
-        if self.active_frame is not None:
-            if self.active_frame == 0:
-                point_x = self.width() * self.separator_line
-                # self.painter.drawEllipse(point_x + 10, 10, 20, 20)
-                # self.painter.setPen(black_solid_pen)
-                # self.painter.drawEllipse(point_x + 12, 12, 16, 16)
-            else:
-                point_x = self.width() - 40
-            self.painter.drawEllipse(point_x + 10, 10, 20, 20)
-            self.painter.setPen(black_solid_pen)
-            self.painter.drawEllipse(point_x + 8, 8, 24, 24)
 
         self.painter.end()
 
@@ -100,36 +89,28 @@ class PaintSheet(QWidget):
         if a0.button() == 2:
             self.separator_mode = False
 
+
 class PreviewSheet(QWidget):
     def __init__(self, parent=None, switch_func=None, mark_func=None):
         QWidget.__init__(self, parent=parent)
         self.pixmaps = [None] * 15
         self.delete_marks = [None] * 15
+        self.suggest_marks = [None] * 15
         self.central_pixmap = 0
-        self.pos = None
+        self.cursor_pos = None
         self.setMouseTracking(True)
         self.painter = QPainter()
         self.switch = switch_func
         self.mark = mark_func
-        self.mark_intent = (0, 0)
         self.mark_intent_l = 0
         self.mark_intent_r = 0
         self.hide_marks_timer = QTimer()
-        self.hide_marks_timer.timeout.connect(self.hihe_marks)
+        self.hide_marks_timer.timeout.connect(self.hide_marks)
         self.hide_marks_timer.setInterval(1800)
         self.hide_marks_timer.setSingleShot(True)
-        # self.redraw_timer = QTimer()
-        # self.redraw_timer.timeout.connect(self.redraw_element)
-        # self.redraw_timer.setInterval(1)
-        # self.redraw_timer.setSingleShot(True)
 
-    # def redraw_element(self):
-    #     # self.pos = None
-    #     self.update()
-    #     QApplication.processEvents()
-
-    def hihe_marks(self):
-        self.pos = None
+    def hide_marks(self):
+        self.cursor_pos = None
         self.update()
 
     def paintEvent(self, event):
@@ -142,11 +123,18 @@ class PreviewSheet(QWidget):
         green_fat_solid_pen = QPen(Qt.green, 4, Qt.SolidLine)
         red_solid_pen = QPen(Qt.red, 2, Qt.SolidLine)
         black_solid_pen = QPen(Qt.black, 2, Qt.SolidLine)
+
+        # green_grad = QRadialGradient(1, 3, 8)
+        # green_grad.setColorAt(0, Qt.green)
+        # green_grad.setColorAt(15, Qt.cyan)
+        green_solid_brush = QBrush(Qt.green)
+        red_solid_brush = QBrush(Qt.red)
+        no_brush = QBrush(Qt.NoBrush)
         last_pen = None
 
-        def set_this_pen(pen):
+        def set_this_pen(pen, force=False):
             nonlocal last_pen
-            if last_pen != pen:
+            if last_pen != pen or force:
                 painter.setPen(pen)
                 last_pen = pen
 
@@ -165,7 +153,6 @@ class PreviewSheet(QWidget):
             if self.delete_marks[idx]:
                 left_mark = self.delete_marks[idx][0]
                 right_mark = self.delete_marks[idx][1]
-                # thumb_center = QPoint(self.size().width() / 2 + idx * 155, self.size().height() / 2 + 50)
                 left_mark_center = thumb_center + QPoint(-50, 50)
                 right_mark_center = thumb_center + QPoint(50, 50)
                 if left_mark == 1:
@@ -201,8 +188,21 @@ class PreviewSheet(QWidget):
                     set_this_pen(black_solid_pen)
                 else:
                     set_this_pen(black_dot_line_pen)
-
             painter.drawRect(draw_rect)
+
+            if self.suggest_marks[idx]:
+                left_mark, right_mark = self.suggest_marks[idx]
+                left_mark_center = thumb_center + QPoint(-50, -50)
+                right_mark_center = thumb_center + QPoint(50, -50)
+                if left_mark:
+                    painter.setBrush(green_solid_brush if left_mark == 1 else red_solid_brush)
+                    set_this_pen(black_solid_pen)
+                    painter.drawEllipse(left_mark_center, 10, 10)
+                if right_mark:
+                    painter.setBrush(green_solid_brush if right_mark == 1 else red_solid_brush)
+                    set_this_pen(black_solid_pen)
+                    painter.drawEllipse(right_mark_center, 10, 10)
+                painter.setBrush(no_brush)
 
             if not position:
                 set_this_pen(green_fat_solid_pen)
@@ -215,9 +215,9 @@ class PreviewSheet(QWidget):
             thumb_id = i // 2 if i % 2 else -i // 2
             draw_thumb(thumb_id)
 
-        if self.pos:
-            left_center = self.pos - QPoint(15, 0)
-            right_center = self.pos + QPoint(15, 0)
+        if self.cursor_pos:
+            left_center = self.cursor_pos - QPoint(15, 0)
+            right_center = self.cursor_pos + QPoint(15, 0)
             if self.mark_intent_l == 0:
                 painter.setPen(QPen(Qt.blue, 2, Qt.SolidLine))
                 painter.drawEllipse(left_center, 10, 10)
@@ -238,7 +238,6 @@ class PreviewSheet(QWidget):
                 painter.setPen(red_solid_pen)
                 painter.drawLines((right_center - QPoint(10, 0)), (right_center + QPoint(10, 0)))
 
-
     def mouseMoveEvent(self, event):
         thumb_id = round((event.pos().x() - self.size().width() / 2) / 155)
         thumb_center_x = self.size().width() / 2 + thumb_id * 155
@@ -246,8 +245,6 @@ class PreviewSheet(QWidget):
 
         off_center_x = event.pos().x() - thumb_center_x
         off_center_y = event.pos().y() - thumb_center_y
-        # self.mark_intent_l = 1 if off_center_y < off_center_x else -1
-        # self.mark_intent_r = 1 if off_center_y < -off_center_x else -1
         self.mark_intent_l = 1 if off_center_x < -25 else -1
         self.mark_intent_r = 1 if off_center_x > 25 else -1
         if abs(off_center_x) < 25:
@@ -260,12 +257,11 @@ class PreviewSheet(QWidget):
             elif off_center_y > 0:
                 self.mark_intent_l = -1
                 self.mark_intent_r = -1
-        self.pos = event.pos()
+        self.cursor_pos = event.pos()
         self.hide_marks_timer.start()
         QApplication.processEvents()
         self.update()
         QApplication.processEvents()
-        # self.redraw_timer.start(1)
 
     def mousePressEvent(self, a0: QtGui.QMouseEvent) -> None:
         thumb = int((a0.x() - self.size().width() / 2 + 75) // 155)

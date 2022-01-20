@@ -1,8 +1,6 @@
 
 # todo: option to change subfolder naming scheme (add color into the name, number of files)
 # todo: search similar images to sample image or sample folder with images
-# todo: compare using 3D histograms
-# todo: fix: in case of low
 # todo: figure out what to do if two files have the same name and belong to the same folder
 
 # todo: modify sorting algorithm so that final number of folders is roughly equal to desired
@@ -14,6 +12,26 @@
 # todo: scan forders and calculate difference between images in each
 
 # todo: rewrite stage2_regroup into using pool in multiprocessing mode
+
+# todo:
+# todo:
+# todo: highlight pair when mouse hovering
+# todo: Gradients
+# todo: filter to show only pairs with suggested favourite
+# todo: zooming of previews
+# todo: panning of previews
+# todo: load thumbs in separate thread
+
+
+
+
+
+done:
+when left time is small, make mix faster
+options to autoselect on different criterion
+compare using 3D histograms
+bigger to right
+
 
 
 '''Алгоритм выделения связных компонент
