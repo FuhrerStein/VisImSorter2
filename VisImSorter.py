@@ -8,6 +8,7 @@ import random
 import re
 import shutil
 import sys
+# import gc
 from time import sleep, localtime, time, gmtime, strftime
 from timeit import default_timer as timer
 
@@ -28,6 +29,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 from scipy import ndimage
 from PaintSheet import PaintSheet, PreviewSheet
 from ImageLoader import load_image, generate_image_vector, all_file_types
+# from collections.abc import Mapping, Container
 
 import CompareDialog
 import VisImSorterInterface
@@ -41,7 +43,6 @@ image_count = 0
 
 group_db = []
 groups_count = 0
-
 
 new_folder = ""
 new_vector_folder = ""
@@ -88,10 +89,13 @@ class Data:
     status_text = ""
     progress_max = 100
     progress_value = 0
+    last_iteration_progress_value = 0
     run_index = 0
     working_bands = set()
     raw_time_left = 0
     smooth_end_time = [0.] * 50
+    smooth_speed = None
+    steps_buffer = [(0., 0)] * 50
     smooth_time_iterations = 0
     event_start_time = 0
     passed_percent = 0
@@ -101,7 +105,9 @@ class Data:
         self.smooth_end_time = [0.] * 50
         self.event_start_time = time()
         self.passed_percent = 0
-
+        data.last_iteration_progress_value = 0
+        data.smooth_speed = None
+        data.steps_buffer = [(0., 0)] * 50
 
 
 conf = Config()
@@ -110,6 +116,7 @@ data = Data()
 
 def mix(a, b, amount=.5):
     return a * (1 - amount) + b * amount
+
 
 def pixmap_from_image(im):
     qimage_obj = QtGui.QImage(im.tobytes(), im.width, im.height, im.width * 3, QtGui.QImage.Format_RGB888)
@@ -128,6 +135,42 @@ def set_status(status=None, progress_value=None, progress_max=None, abort=False,
     if abort:
         data.run_index += 1
 
+#
+# def deep_getsizeof(o, ids=None):
+#     """Find the memory footprint of a Python object
+#
+#     This is a recursive function that drills down a Python object graph
+#     like a dictionary holding nested dictionaries with lists of lists
+#     and tuples and sets.
+#
+#     The sys.getsizeof function does a shallow size of only. It counts each
+#     object inside a container as pointer only regardless of how big it
+#     really is.
+#
+#     :param o: the object
+#     :param ids:
+#     :return:
+#     """
+#     if ids == None:
+#         ids = set()
+#     d = deep_getsizeof
+#     if id(o) in ids:
+#         return 0
+#
+#     r = sys.getsizeof(o)
+#     ids.add(id(o))
+#
+#     if isinstance(o, str): # or isinstance(0, unicode):
+#         return r
+#
+#     if isinstance(o, Mapping):
+#         return r + sum(d(k, ids) + d(v, ids) for k, v in o.items())
+#
+#     if isinstance(o, Container):
+#         return r + sum(d(x, ids) for x in o)
+#
+#     return r
+
 
 def run_sequence():
     global function_queue
@@ -137,12 +180,13 @@ def run_sequence():
         function_queue.append(init_pool)
 
     function_queue.append(scan_for_images)
-    function_queue.append(generate_image_vectors_and_groups)
+    function_queue.append(collect_image_vectors)
 
     if conf.search_duplicates:
         function_queue.append(close_pool)
-        function_queue.append(create_distance_db)
-        function_queue.append(show_closest_images_gui)
+        # function_queue.append(create_distance_db)
+        function_queue.append(create_distance_db_multi)
+        function_queue.append(show_compare_images_gui)
     else:
         if conf.stage1_grouping_type == 0:
             function_queue.append(create_simple_groups)
@@ -208,8 +252,8 @@ def init_pool():
 def scan_for_images():
     global image_paths_db
     set_status("Scanning images...")
+    QApplication.processEvents()
     image_paths = []
-
     all_files = glob.glob(conf.start_folder + "/**/*", recursive=conf.search_subdirectories)
 
     for file_extention in all_file_types:
@@ -218,8 +262,8 @@ def scan_for_images():
     if not len(image_paths):
         set_status("No images found.", abort=True)
         return
-
-    image_paths = pd.Series([os.path.normpath(im) for im in image_paths]).rename("image_paths")
+    image_paths = pd.Series(image_paths).apply(os.path.normpath).rename("image_paths")
+    # image_paths = pd.Series([os.path.normpath(im) for im in image_paths], name="image_paths")
     image_names = image_paths.apply(os.path.basename).rename("image_names")
     image_paths_db = pd.DataFrame((image_paths, image_names)).T
 
@@ -228,7 +272,7 @@ def scan_for_images():
         image_paths_db["image_name_groups"] = image_name_groups
 
 
-def generate_image_vectors_and_groups():
+def collect_image_vectors():
     global image_DB
     global image_count
     global pool
@@ -309,7 +353,7 @@ def create_distance_db():
         diff_db['im_1'] = im_index
         diff_db['mean_diffs'] = (image_DB.means[:im_index] - image_DB.means[im_index]).abs()
         if conf.max_likeness:
-            diff_db = diff_db[diff_db.mean_diffs < conf.max_likeness * 2.55].copy()
+            diff_db = diff_db[diff_db.mean_diffs < conf.max_likeness * 1.35].copy()
         if len(diff_db) == 0:
             continue
         for color_band in data.working_bands:
@@ -355,7 +399,127 @@ def create_distance_db():
         distance_db.loc[1 / distance_db["size_compare"] > threshold, "size_compare_category"] = category
 
 
-def show_closest_images_gui():
+def create_distance_db_multi():
+    global distance_db
+    local_run_index = data.run_index
+    distance_db = None
+    triangle_distance_db_list = []
+    new_lines_count = 0
+    # max_likeness = conf.max_likeness * 1e-2 if conf.compare_by_angles else 300
+    max_likeness = 450
+    # t1 = 0
+
+    def compact_distance_db():
+        nonlocal max_likeness, new_lines_count
+        global distance_db
+        if distance_db is not None:
+            triangle_distance_db_list.append(distance_db)
+        distance_db = pd.concat(triangle_distance_db_list)
+        distance_db.sort_values("dist", inplace=True)
+        triangle_distance_db_list.clear()
+        new_lines_count = 0
+        distance_db = distance_db[:conf.max_pairs].copy()
+        max_likeness = min(max_likeness, distance_db.dist.iloc[-1])
+
+    status = "(angles)..." if conf.compare_by_angles else "(distances)..."
+    set_status("(2/4) Comparing image " + status)
+    data.set_smooth_time(20)
+
+    work_indexes = zip(range(1, image_count // 2 + 2), range(image_count - 1, image_count // 2 - 1, -1))
+    work_indexes = list(dict.fromkeys([s for t in work_indexes for s in t]))
+    im_vectors = {}
+    for color_band in data.working_bands:
+        im_vectors[color_band] = np.stack(image_DB[color_band]).astype(np.int32)
+
+    for i, im_index in enumerate(work_indexes):
+        # diff_db = pd.DataFrame({'im_2': range(im_index)})
+        # diff_db['im_1'] = im_index
+        mean_diffs = (image_DB.means[:im_index] - image_DB.means[im_index]).abs()
+        # diff_db = pd.DataFrame(mean_diffs.rename("mean_diffs"))
+
+        # diff_db['mean_diffs'] = (image_DB.means[:im_index] - image_DB.means[im_index]).abs()
+
+        # if conf.max_likeness:
+        #     diff_db = diff_db[diff_db.mean_diffs < conf.max_likeness * 1.35 + .1].copy()
+        # diff_db = diff_db[diff_db.mean_diffs < conf.max_likeness * 1.35 + .1].copy()
+        working_pairs = mean_diffs < max_likeness #* 500000
+        diff_list = {}
+        # if len(diff_db) == 0:
+        #     continue
+        if not working_pairs.any():
+            continue
+        for color_band in data.working_bands:
+            color_band_s = color_band + "_size"
+            # im_vector_sizes = image_DB[color_band + "_size"]
+            # im_2s = diff_db.index.get_level_values(1)
+            # im_2s = diff_db.index
+            if conf.compare_by_angles:
+                distances = 1 - np.dot(im_vectors[color_band][:im_index][working_pairs], im_vectors[color_band][im_index]) \
+                            / image_DB[color_band_s][:im_index][working_pairs] / image_DB[color_band_s][im_index]
+                # distances = 1 - np.dot(im_vectors[color_band][diff_db.index], im_vectors[color_band][im_index]) \
+                #             / im_vector_sizes[diff_db.index] / im_vector_sizes[im_index]
+            else:
+                distances = la_norm((im_vectors[color_band][:im_index][working_pairs] - im_vectors[color_band][im_index]),
+                                    axis=1).astype(int)
+                # distances = la_norm((im_vectors[color_band][diff_db.im_2] - im_vectors[color_band][im_index]),
+                #                     axis=1).astype(int)
+            # diff_db['dist_' + color_band] = distances
+            diff_list['dist_' + color_band] = distances
+        diff_db = pd.DataFrame(diff_list)
+        diff_db["dist"] = diff_db.mean(axis=1) * 450
+        # diff_db["dist"] = diff_db.iloc[:, 1:].mean(axis=1)
+        diff_db["size_compare"] = image_DB.megapixels[:im_index] / image_DB.megapixels[im_index]
+
+        # temp = diff_db["dist"] < max_likeness
+        # if temp.any():
+        #     t2 = mean_diffs[diff_db[temp].index].max() / max_likeness * 100
+        #     t1 = max(t1, t2)
+        #     t3 = sum(mean_diffs < max_likeness) / len(mean_diffs) * 100
+        #     print(f"{t1:.1f}%, {t2:.4f}, {t3:.1f}%")
+
+        diff_db = diff_db[diff_db["dist"] < max_likeness]
+        # if max_likeness:
+        #     diff_db = diff_db[diff_db["dist"] < max_likeness]
+
+        diff_db = diff_db.set_index(pd.MultiIndex.from_product([diff_db.index, [im_index]], names=["im_2", "im_1"]))
+        triangle_distance_db_list.append(diff_db)
+        if conf.max_pairs:
+            new_lines_count += len(diff_db)
+            if new_lines_count > conf.max_pairs:
+                compact_distance_db()
+        data.passed_percent = (i + 1) / len(work_indexes)
+        text_to_go = f"(2/4) Comparing image {i + 1:d} of {len(work_indexes):d}."
+        set_status(text_to_go, progress_value=i, muted=True)
+        QApplication.processEvents()
+        if local_run_index != data.run_index:
+            return
+
+    data.set_smooth_time(0)
+    set_status("(3/4) Final resorting ...")
+    QApplication.processEvents()
+    compact_distance_db()
+    # distance_db = pd.concat(triangle_distance_db_list)
+    # distance_db.sort_values("dist", inplace=True)
+    # distance_db.reset_index(drop=True, inplace=True)
+    # if conf.max_pairs:
+    #     compact_distance_db()
+        # distance_db = distance_db[:conf.max_pairs].copy()
+
+    distance_db.reset_index(inplace=True)
+
+    distance_db["size_compare_category"] = 0
+    distance_db["crops"] = None
+    distance_db["crop_compare_category"] = 0
+    distance_db["del_im_1"] = 0
+    distance_db["del_im_2"] = 0
+    categories = {1: 1, 2: 1.1, 3: 3}
+    for category, threshold in categories.items():
+        distance_db.loc[distance_db["size_compare"] > threshold, "size_compare_category"] = -category
+        distance_db.loc[1 / distance_db["size_compare"] > threshold, "size_compare_category"] = category
+
+
+def show_compare_images_gui():
+    global compare_wnd
     if len(distance_db) == 0:
         set_status("No similar enough images found", abort=True)
         return
@@ -363,19 +527,22 @@ def show_closest_images_gui():
 
     compare_wnd = CompareGUI()
     if conf.compare_resort:
-        compare_wnd.resort_pairs3()
+        compare_wnd.resort_pairs()
         if local_run_index != data.run_index:
             return
 
-    set_status("Preparation complete. Showing image pairs.", 0)
+    set_status("Preparation complete.", 0)
     QApplication.processEvents()
 
-    compare_wnd.show()
-    while compare_wnd.isVisible():
-        sleep(.1)
-        QApplication.processEvents()
-    compare_wnd.image_delete_candidates.clear()
-    compare_wnd.marked_pairs.clear()
+    compare_wnd_toggle()
+
+def compare_wnd_toggle():
+    if compare_wnd == CompareGUI:
+        return
+    if main_win.btn_show_compare_wnd.isChecked():
+        compare_wnd.show()
+    else:
+        compare_wnd.hide()
 
 
 def create_simple_groups():
@@ -1267,19 +1434,19 @@ class AnimatedHistogram:
 
 
 def get_dominant_image(work_pair):
-    crop_compare = distance_db.crop_compare_category[work_pair]
+    crop_compare = distance_db.crop_compare_category.iloc[work_pair]
     if crop_compare and crop_compare < 0:
         return 1
 
-    size_compare = distance_db.size_compare_category[work_pair]
+    size_compare = distance_db.size_compare_category.iloc[work_pair]
     if size_compare and size_compare > 0:
         return 1
     return 0
 
 
 def get_image_pair(work_pair):
-    id_l = distance_db.im_1[work_pair]
-    id_r = distance_db.im_2[work_pair]
+    id_l = distance_db.im_1.iloc[work_pair]
+    id_r = distance_db.im_2.iloc[work_pair]
     if get_dominant_image(work_pair) > 0:
         return id_r, id_l
     else:
@@ -1287,9 +1454,10 @@ def get_image_pair(work_pair):
 
 
 def get_image_pair_crops(work_pair):
-    crops = distance_db.crops[work_pair]
-    if crops is None:
+    crops = distance_db.crops.iloc[work_pair]
+    if type(crops) is not list:
         return None, None
+
     if get_dominant_image(work_pair) > 0:
         return crops[4:], crops[:4]
     else:
@@ -1307,59 +1475,37 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
     animation_frame = 0
     thumb_mode = -2
     suggest_mode = 0
-    suggested_deletes = dict()
-    marked_pairs = dict()
+    # suggested_deletes = dict()
     image_delete_candidates = {}
     image_delete_final = set()
-    auto_selection_mode = 2
     size_comparison = 0
-    resort_with_crops = True
+    # resort_with_crops = True
+    list_filtered = False
+    original_distance_db = None
 
     def __init__(self):
         super().__init__()
         self.setupUi(self)
 
-        self.label_percent.mousePressEvent = self.toggle_diff_mode
+        self.label_percent.mousePressEvent = self.central_label_click
 
         self.paint_sheet = PaintSheet(self)
-        self.paint_sheet.setSizePolicy(
-            QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding))
+        self.paint_sheet.setSizePolicy(QtWidgets.QSizePolicy(*[QtWidgets.QSizePolicy.Expanding]*2))
         self.preview_sheet = PreviewSheet(self, self.show_pair, self.mark_pair_visual)
         self.preview_sheet.setMaximumHeight(155)
         self.preview_sheet.setMinimumHeight(155)
-        self.label_menu.mousePressEvent = self.show_main_menu
-        self.label_menu_suggestions.mousePressEvent = self.show_suggestions_menu
-
-        self.suggestions_menu = QMenu("Marks")
-        self.suggestions_menu.addAction("Mark suggested up to this", self.mark_suggested_pairs)
-        self.suggestions_menu.addAction("Clear all markings", self.clear_marks)
-
-        self.main_menu = QMenu("Settings")
-        self.main_menu.addAction("Move files", self.move_files)
-        self.main_menu.addAction("Apply marks (no file moves)", self.process_pairs)
-        # self.main_menu.addAction("Auto mark up to this", self.mark_pairs_automatic)
-        self.main_menu.addAction("Resort pairs with accurate diff", self.resort_pairs3)
-
-        # self.sub_menu_selection = self.main_menu.addMenu("When files have equal size")
-        # self.sub_menu_selection_ag = QActionGroup(self.sub_menu_selection)
-        # sub_menu_names = ["Do not mark anything", "Mark to leave both",
-        #                   "Mark left for deletion", "Mark right for deletion",
-        #                   "Mark file with longer name for deletion", "Mark file with shorter name for deletion"]
-        # self.sub_menu_selection_items = []
-        # for item in sub_menu_names:
-        #     item_qmenu = QAction(item, self.sub_menu_selection_ag)
-        #     item_qmenu.setCheckable(True)
-        #     self.sub_menu_selection.addAction(item_qmenu)
-        #     self.sub_menu_selection_items.append(item_qmenu)
-        # self.sub_menu_selection_items[2].setChecked(True)
-        # self.sub_menu_selection_ag.triggered.connect(self.change_auto_selection_mode)
-
-        self.main_menu.addSeparator()
-        self.main_menu.addAction("Close", self.close)
 
         self.mode_buttons.buttonClicked.connect(self.reset_thumbs)
-        self.suggestion_buttions.buttonClicked.connect(self.switch_suggested)
         self.push_colored.clicked.connect(self.reset_thumbs)
+        self.suggest_buttons.buttonClicked.connect(self.switch_suggested)
+        self.filter_buttons.buttonClicked.connect(self.toggle_filter_pairs)
+
+        self.push_mark_suggested.clicked.connect(self.mark_suggested_pairs)
+        self.push_apply_marked.clicked.connect(self.apply_marked)
+        self.push_move_applied.clicked.connect(self.move_files)
+        self.push_mark_clear.clicked.connect(self.clear_marks)
+        self.push_goto_first.clicked.connect(self.goto_first_pair)
+        self.push_resort_pairs.clicked.connect(self.resort_pairs)
 
         self.frame_img.layout().addWidget(self.paint_sheet)
         self.frame_img.layout().addWidget(self.preview_sheet)
@@ -1375,9 +1521,62 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
         self.label_name_r.mousePressEvent = self.right_label_click
         self.label_name_l.mousePressEvent = self.left_label_click
 
+    def toggle_filter_pairs(self, check=None):
+        global distance_db
+        self.list_filtered = -2 if check is False else self.filter_buttons.checkedId()
+
+        if self.list_filtered == -2:
+            if self.original_distance_db is not None:
+                distance_db = distance_db.combine_first(self.original_distance_db)
+                self.original_distance_db = None
+        else:
+            if self.original_distance_db is None:
+                self.original_distance_db = distance_db
+            else:
+                distance_db = self.original_distance_db
+
+            undelete_list = distance_db.apply(self.get_filtered_pair, axis=1)  # todo: new procedure here
+            distance_db = distance_db[undelete_list]
+
+        self.adjust_suggettions_block()
+        self.reset_thumbs(True)
+        self.goto_first_pair()
+
+    def adjust_suggettions_block(self):
+        def enable_buttons(bool_list):
+            for button, option in zip(self.suggest_buttons.buttons(), bool_list):
+                button.setEnabled(option)
+
+        if self.list_filtered == -2:
+            self.push_suggest_size_and_crop.click()
+            enable_buttons([1, 1, 1, 1, 1])
+        elif self.list_filtered == -3:
+            self.push_suggest_any.click()
+            enable_buttons([0, 0, 0, 1, 1])
+        elif self.list_filtered == -4:
+            enable_buttons([1, 1, 1, 1, 1])
+            self.push_suggest_size_and_crop.click()
+        elif self.list_filtered == -5:
+            enable_buttons([0, 1, 0, 1, 1])
+            self.push_suggest_crop_only.click()
+        elif self.list_filtered == -6:
+            enable_buttons([0, 0, 1, 1, 1])
+            self.push_suggest_size_only.click()
+        elif self.list_filtered == -7:
+            enable_buttons([0, 1, 1, 1, 1])
+            self.push_suggest_size_and_crop.click()
+
+    def switch_suggested(self, button_id):
+        # if self.suggest_mode != self.suggest_buttons.checkedId() or type(button_id) is bool:
+        self.suggest_mode = self.suggest_buttons.checkedId()
+        self.update_all_delete_marks()
+        self.show_pair()
+
     def clear_marks(self):
         distance_db.del_im_1 = 0
         distance_db.del_im_2 = 0
+        self.push_apply_marked.setEnabled(False)
+        self.push_mark_clear.setEnabled(False)
         self.image_delete_candidates.clear()
         self.update_all_delete_marks()
         self.preview_sheet.update()
@@ -1392,6 +1591,7 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
         self.update_central_lbl()
 
     def mark_pair_in_db(self, work_pair, im_1_order, im_2_order, force=True):
+        pair_index = distance_db.index[work_pair]
         id_1 = distance_db.im_1.iloc[work_pair]
         id_2 = distance_db.im_2.iloc[work_pair]
 
@@ -1415,8 +1615,11 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
                     old_set.discard(work_pair)
                     if len(old_set) == 0:
                         self.image_delete_candidates.pop(im_id, None)
-        distance_db.del_im_1.iloc[work_pair] = im_1_order
-        distance_db.del_im_2.iloc[work_pair] = im_2_order
+        distance_db.loc[pair_index, "del_im_1"] = im_1_order
+        distance_db.loc[pair_index, "del_im_2"] = im_2_order
+        if self.image_delete_candidates and not self.push_apply_marked.isEnabled():
+            self.push_apply_marked.setEnabled(True)
+            self.push_mark_clear.setEnabled(True)
 
     def mark_pair_visual(self, shift, left_order, right_order):
         if not len(distance_db):
@@ -1432,14 +1635,14 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
         self.preview_sheet.update()
         self.update_central_lbl()
 
-    def resort_pairs3(self):
+    def resort_pairs(self):
         global distance_db
         set_status("(4/4) Resorting pairs...", 0, len(distance_db))
         local_run_index = data.run_index
-        data.set_smooth_time(30)
+        data.set_smooth_time(50)
         thumb_cache = {}
-        tasks_count = len(distance_db)
         resized_thumb_cache = {}
+        tasks_count = len(distance_db)
         QApplication.processEvents()
         self.hide()
         self.animate_timer.stop()
@@ -1449,6 +1652,8 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
         def get_image_thumb(im_id):
             img = thumb_cache.get(im_id, None)
             if img is None:
+                if len(thumb_cache) > 1000:
+                    thumb_cache.pop(next(iter(thumb_cache)))
                 img = load_image(image_DB.image_paths[im_id])
                 img = img.convert("RGB").resize((480, 480), resample=Image.BILINEAR)
                 thumb_cache[im_id] = img
@@ -1503,6 +1708,7 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
             QApplication.processEvents()
             if best_crop_dist > best_dist:
                 resized_thumb_cache.clear()
+                # gc.collect()
                 return best_dist, crops
             else:
                 crops[best_crop_id] += 1
@@ -1553,19 +1759,20 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
         distance_db.reset_index(drop=True, inplace=True)
         conf.compare_by_angles = False
 
+        thumb_cache.clear()
         data.set_smooth_time(0)
         set_status("Resort complete. Showing image pairs.", 0, 100)
         main_win.redraw_dialog()
+        self.push_resort_pairs.setEnabled(False)
         QApplication.processEvents()
         self.preview_sheet.central_pixmap = 0
         self.current_pair = 0
         self.image_delete_candidates.clear()
-        self.marked_pairs.clear()
+        # self.marked_pairs.clear()
         self.reset_thumbs(True)
         self.show()
-        self.update_all_delete_marks()
-        self.show_pair()
-        self.update_central_lbl()
+        # self.update_all_delete_marks()
+        # self.show_pair()
 
     def right_label_click(self, a0: QtGui.QMouseEvent):
         if a0.button() == 1:
@@ -1579,130 +1786,54 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
         elif a0.button() == 2:
             self.mark_pair_visual(0, 1, -1)
 
+    def hideEvent(self, a0: QtGui.QHideEvent) -> None:
+        if self.draw_diff_mode:
+            self.toggle_diff_mode()
+        main_win.btn_show_compare_wnd.setChecked(False)
+        # self.animate_timer.stop()
+
     def showEvent(self, a0: QtGui.QShowEvent) -> None:
         if not a0.spontaneous():
-            self.marked_pairs.clear()
             self.image_delete_candidates.clear()
             self.image_delete_final.clear()
+            self.push_move_applied.setEnabled(False)
+            self.push_apply_marked.setEnabled(False)
+            self.push_mark_clear.setEnabled(False)
             self.reset_thumbs(True)
-            self.update_central_lbl()
 
-    def change_auto_selection_mode(self):
-        selected_item = self.sub_menu_selection_items.index(self.sub_menu_selection_ag.checkedAction())
-        self.auto_selection_mode = selected_item
-
-    # def mark_pairs_automatic(self):
-    #     for work_pair in range(self.current_pair + 1):
-    #         id_l, id_r = get_image_pair(work_pair)
-    #         # id_l = distance_db.im_1[work_pair]
-    #         # id_r = distance_db.im_2[work_pair]
-    #         if self.image_delete_candidates.get(id_l, False) or self.image_delete_candidates.get(id_r, False):
-    #             continue
-    #         im_l_size = image_DB.sizes[id_l]
-    #         im_r_size = image_DB.sizes[id_r]
-    #         size_difference = im_l_size[0] * im_l_size[1] / (im_r_size[0] * im_r_size[1])
-    #         if size_difference > 1:
-    #             left_order, right_order = 1, -1
-    #         elif size_difference < 1:
-    #             left_order, right_order = -1, 1
-    #         elif self.auto_selection_mode == 0:
-    #             continue
-    #         elif self.auto_selection_mode == 1:
-    #             left_order, right_order = (1, 1)
-    #         elif self.auto_selection_mode == 2:
-    #             left_order, right_order = (-1, 1)
-    #         elif self.auto_selection_mode == 3:
-    #             left_order, right_order = (1, -1)
-    #         elif self.auto_selection_mode == 4 or self.auto_selection_mode == 5:
-    #             im_l_name = image_DB.image_paths[id_l]
-    #             im_r_name = image_DB.image_paths[id_r]
-    #             im_l_len = len(os.path.basename(im_l_name))
-    #             im_r_len = len(os.path.basename(im_r_name))
-    #             if im_l_len == im_r_len:
-    #                 continue
-    #             delete_left = (self.auto_selection_mode == 5) != (im_l_len > im_r_len)
-    #             left_order, right_order = (-1, 1) if delete_left else (1, -1)
-    #         else:
-    #             print("Error at selecting")
-    #             continue
-    #
-    #         if not self.marked_pairs.get(work_pair, None):
-    #             self.mark_pair(work_pair, left_order, right_order)
-    #
-    #     self.update_all_delete_marks()
-    #     self.preview_sheet.update()
-    #     self.update_central_lbl()
-
-    # def mark_pair(self, work_pair, left_order, right_order):
-    #     print(work_pair, left_order, right_order)
-    #     id_l = distance_db.im_1[work_pair]
-    #     id_r = distance_db.im_2[work_pair]
-    #
-    #     if (left_order, right_order) == (0, 0):
-    #         self.marked_pairs.pop(work_pair, None)
-    #         for img_index in [id_l, id_r]:
-    #             old_set = self.image_delete_candidates.get(img_index, None)
-    #             if old_set is not None:
-    #                 old_set.discard(work_pair)
-    #                 if len(old_set) == 0:
-    #                     self.image_delete_candidates.pop(img_index, None)
-    #
-    #     else:
-    #         self.marked_pairs[work_pair] = (left_order, right_order)
-    #         old_set = self.image_delete_candidates.get(id_l, set())
-    #         if left_order == -1:
-    #             old_set.add(work_pair)
-    #             self.image_delete_candidates[id_l] = old_set
-    #         else:
-    #             old_set.discard(work_pair)
-    #             if len(old_set) == 0:
-    #                 self.image_delete_candidates.pop(id_l, None)
-    #
-    #         old_set = self.image_delete_candidates.get(id_r, set())
-    #         if right_order == -1:
-    #             old_set.add(work_pair)
-    #             self.image_delete_candidates[id_r] = old_set
-    #         else:
-    #             old_set.discard(work_pair)
-    #             if len(old_set) == 0:
-    #                 self.image_delete_candidates.pop(id_r, None)
-
-    def process_pairs(self):
-        print("process_pairs")
+    def apply_marked(self):
+        self.toggle_filter_pairs(False)
         old_image_delete_count = len(self.image_delete_final)
         self.image_delete_final.update(self.image_delete_candidates.keys())
 
-        def check_in_deletions(pair_record, *args, **kwargs):
-            return pair_record in self.image_delete_candidates
-
-        pairs_to_delete_1 = distance_db.im_1.apply(check_in_deletions, axis=1)
-        pairs_to_delete_2 = distance_db.im_2.apply(check_in_deletions, axis=1)
-        pairs_to_delete = pairs_to_delete_1 | pairs_to_delete_2
+        pairs_to_delete_1 = distance_db.im_1.isin(self.image_delete_candidates)
+        pairs_to_delete_2 = distance_db.im_2.isin(self.image_delete_candidates)
+        pairs_to_delete_3 = distance_db.del_im_1 != 0
+        pairs_to_delete_4 = distance_db.del_im_2 != 0
+        pairs_to_delete = pairs_to_delete_1 | pairs_to_delete_2 | pairs_to_delete_3 | pairs_to_delete_4
 
         distance_db.drop(distance_db[pairs_to_delete].index, inplace=True)
 
-        pairs_to_delete = set()
-        pairs_to_delete.update(self.marked_pairs.keys())
-        distance_db.drop(index=pairs_to_delete, inplace=True, errors="ignore")
-        distance_db.reset_index(drop=True, inplace=True)
-
-        print(f"Processed {len(self.marked_pairs)} pairs, deleted {len(pairs_to_delete)} pairs")
-        print(
-            f"Added {len(self.image_delete_final) - old_image_delete_count} images to delete, totaling {len(self.image_delete_final)}")
+        print(f"Added {len(self.image_delete_final) - old_image_delete_count} images to delete list, "
+              f"totaling {len(self.image_delete_final)}")
 
         self.image_delete_candidates.clear()
-        self.marked_pairs.clear()
-        self.preview_sheet.cursor_pos = None
-        self.reset_thumbs(True)
-        self.update_all_delete_marks()
         self.current_pair = 0
         self.preview_sheet.central_pixmap = 0
-        self.show_pair()
-        self.update_central_lbl()
+        self.toggle_filter_pairs()
+        self.update_all_delete_marks()
+        self.reset_thumbs(True)
+
+        self.push_apply_marked.setEnabled(False)
+        self.push_move_applied.setEnabled(True)
+        self.push_mark_clear.setEnabled(False)
+
+    def goto_first_pair(self):
+        self.show_pair(-self.current_pair)
 
     def move_files(self):
         print("Files to be moved")
-        # self.process_pairs()
+        self.push_move_applied.setEnabled(False)
 
         for im_index in self.image_delete_final:
             full_name = image_DB.image_paths[im_index]
@@ -1735,24 +1866,28 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
 
         self.show_pair()
 
-    def show_main_menu(self, *args, **kwargs):
-        self.main_menu.popup(self.label_menu.mapToGlobal(QtCore.QPoint(0, -self.main_menu.sizeHint().height())))
-
-    def show_suggestions_menu(self, *args, **kwargs):
-        self.suggestions_menu.popup(self.label_menu_suggestions.mapToGlobal(QtCore.QPoint(0, -self.suggestions_menu.sizeHint().height())))
-
     def keyPressEvent(self, e):
         if e.key() == QtCore.Qt.Key_Left:
             self.show_pair(-1)
         elif e.key() == QtCore.Qt.Key_Right:
             self.show_pair(1)
 
-    def toggle_diff_mode(self, *args, **kwargs):
+    def central_label_click(self, a0: QtGui.QMouseEvent):
+        if a0.button() == QtCore.Qt.RightButton:
+            frames = [self.frame_1, self.frame_2, self.frame_3, self.frame_4]
+            option_state = self.frame_1.isVisible()
+            for frame in frames:
+                frame.setVisible(not option_state)
+        elif a0.button() == QtCore.Qt.LeftButton:
+            self.toggle_diff_mode()
+
+    def toggle_diff_mode(self):
         self.draw_diff_mode = not self.draw_diff_mode
         self.paint_sheet.separate_pictures = self.draw_diff_mode
         if self.draw_diff_mode:
             self.animate_timer.start()
             self.label_percent.setFrameShadow(QtWidgets.QFrame.Sunken)
+            self.paint_sheet.separator_line = .2
         else:
             self.animate_timer.stop()
             self.paint_sheet.pixmap_l = self.image_pixmaps[0]
@@ -1761,22 +1896,16 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
             self.label_name_r.setLineWidth(1)
             self.label_percent.setFrameShadow(QtWidgets.QFrame.Raised)
             self.paint_sheet.active_frame = None
+            self.paint_sheet.separator_line = .5
         self.update_central_lbl()
         self.paint_sheet.update()
 
     def reset_thumbs(self, button_id):
         if self.thumb_mode != self.mode_buttons.checkedId() or type(button_id) is bool:
-            for i in range(len(self.preview_sheet.pixmaps)):
-                self.preview_sheet.pixmaps[i] = None
+            self.preview_sheet.pixmaps = [None] * 15
         self.thumb_mode = self.mode_buttons.checkedId()
+        self.update_all_delete_marks()
         self.show_pair()
-
-    def switch_suggested(self, button_id):
-        if self.suggest_mode != self.suggestion_buttions.checkedId() or type(button_id) is bool:
-            self.suggest_mode = self.suggestion_buttions.checkedId()
-            self.update_all_delete_marks()
-        self.preview_sheet.update()
-        print(self.suggest_mode)
 
     def load_image_and_pixmap(self, path):
         im = load_image(path).convert("RGB")
@@ -1788,18 +1917,18 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
         if not len(distance_db):
             self.label_percent.setText(f"\nMarked  for deletion {len(self.image_delete_final)} images")
             return
-        im_dist = distance_db.dist[self.current_pair]
-        mean_diffs = distance_db.mean_diffs[self.current_pair]
+        im_dist = distance_db.dist.iloc[self.current_pair]
+        # mean_diffs = distance_db.mean_diffs.iloc[self.current_pair]
         marks_count = len(distance_db[distance_db.del_im_1 != 0])
         first_label_text = f" Pair {self.current_pair + 1} of {len(distance_db)} \nDifference "
         first_label_text += f"{im_dist * 100:.2f}%" if im_dist < 1 else f"{im_dist:.0f}"
-        first_label_text += f"\nMean diffs: {mean_diffs:d}"
+        # first_label_text += f"\nMean diffs: {mean_diffs:d}"
         first_label_text += "\nDifference mode" if self.draw_diff_mode else "\nSide by side mode"
-        first_label_text += f"\nMarked {marks_count} pairs, " \
-                            f"{len(self.image_delete_candidates)} + {len(self.image_delete_final)} images"
+        first_label_text += f"\nMarked {marks_count} pairs"
+        first_label_text += f"\n{len(self.image_delete_candidates)} + {len(self.image_delete_final)} images"
         self.label_percent.setText(first_label_text)
 
-    def size_label_text(self, idx: int, im_id: int):
+    def size_label_text(self, idx: int, im_id=None):
         color_template = """QLabel {
                         border-width: 3px;
                         border-style: solid;
@@ -1809,7 +1938,7 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
         gray_color = "rgb(70, 70, 70);}"
 
         label = [self.label_size_l, self.label_size_r][idx]
-        if not len(distance_db):
+        if not len(distance_db) or im_id is None:
             label.setStyleSheet(color_template + gray_color)
             label.setText("No image")
             return
@@ -1838,8 +1967,12 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
                        -3: "much more to crop",
                        }
 
-        size_comparison = (distance_db["size_compare_category"][self.current_pair])
-        crop_comparison = (distance_db["crop_compare_category"][self.current_pair])
+        work_record = distance_db.iloc[self.current_pair]
+
+        # size_comparison = (distance_db.size_compare_category.iloc[self.current_pair])
+        # crop_comparison = (distance_db.crop_compare_category.iloc[self.current_pair])
+        size_comparison = work_record.size_compare_category
+        crop_comparison = work_record.crop_compare_category
         if get_dominant_image(self.current_pair) == (idx == 0):
             size_comparison *= -1
             crop_comparison *= -1
@@ -1849,35 +1982,18 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
         if crop_comparison:
             text += "\n" + crop_labels[crop_comparison]
 
-        color_category = 0
-        if size_comparison > 0:
-            color_category = 1
-        elif size_comparison < 0:
-            color_category = -1
-
-        if crop_comparison < 0:
-            if color_category != -1:
-                color_category = 1
-            else:
-                color_category = 0
-        elif crop_comparison > 0:
-            if color_category != 1:
-                color_category = -1
-            else:
-                color_category = 0
-
-        if color_category == -1:
-            color_template += red_color
-        elif color_category == 1:
-            color_template += green_color
-        else:
-            color_template += gray_color
-
         crop_list = get_image_pair_crops(self.current_pair)[idx]
         if crop_list and sum(crop_list):
             text += f"\n To crop ({crop_list[0]}, {crop_list[1]}, {crop_list[2]}, {crop_list[3]})"
 
         label.setText(text)
+
+        color_category = self.get_delete_suggest(self.current_pair, True)[idx]
+        # if get_dominant_image(self.current_pair):
+        #     color_category *= -1
+
+        color_template += (red_color, gray_color, green_color)[color_category + 1]
+
         label.setStyleSheet(color_template)
 
     def generate_diff_image2(self, image_l, image_r, do_thumb=False, work_pair=None):
@@ -1944,11 +2060,19 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
         if not len(distance_db):
             self.size_label_text(0)
             self.size_label_text(1)
+            self.label_name_l.setText("")
+            self.label_name_r.setText("")
+            self.paint_sheet.pixmap_l = None
+            self.paint_sheet.pixmap_r = None
+            self.image_pixmaps = [QtGui.QPixmap] * 4
             for i in range(15):
                 self.preview_sheet.pixmaps[i] = None
                 self.preview_sheet.delete_marks[i] = None
                 self.preview_sheet.suggest_marks[i] = None
+            self.paint_sheet.update()
+            self.preview_sheet.update()
             return
+
         self.current_pair += shift
         self.current_pair %= len(distance_db)
         one_step = -1 if shift < 0 else 1
@@ -1979,7 +2103,10 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
         self.image_pixmaps[2] = pixmap_from_image(self.image_d)
         self.image_pixmaps[3] = pixmap_from_image(image_d_second)
         self.paint_sheet.pos = None
-
+        self.paint_sheet.img_zoom = 1
+        self.paint_sheet.img_xy = QtCore.QPoint(0, 0)
+        self.paint_sheet.img_xy = QtCore.QPoint(0, 0)
+        self.paint_sheet.suggest_marks = self.get_delete_suggest(self.current_pair, True)
         self.preview_sheet.update()
 
         if self.draw_diff_mode:
@@ -1989,7 +2116,7 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
             self.paint_sheet.pixmap_r = self.image_pixmaps[1]
 
             self.paint_sheet.update()
-            self.preview_sheet.update()
+            # self.preview_sheet.update()
         self.thumb_timer.start()
 
     def load_new_thumb(self):
@@ -2027,40 +2154,59 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
             work_pair = (self.current_pair + shift) % len(distance_db)
             self.update_preview_delete_marks(work_pair, thumb_id)
 
-    def get_delete_suggest(self, work_pair):
-        size_comparison = (distance_db.size_compare_category[work_pair])
-        crop_comparison = (distance_db.crop_compare_category[work_pair])
+    def get_delete_suggest(self, work_pair, check_flip=False):
+        distance_db_row = distance_db.iloc[work_pair]
+        size_comparison = distance_db_row.size_compare_category
+        crop_comparison = distance_db_row.crop_compare_category
+        delete_left = -1, 1
+        delete_right = 1, -1
 
-        if self.suggest_mode == -6:
+        if check_flip and get_dominant_image(work_pair):
+            delete_left, delete_right = delete_right, delete_left
+
+        if self.suggest_mode == -2:
             if crop_comparison < 0 < size_comparison:
-                return 1, -1
+                return delete_right
             if size_comparison < 0 < crop_comparison:
-                return -1, 1
-        elif self.suggest_mode == -7:
-            if crop_comparison == 0 or size_comparison == 0:
-                if crop_comparison < 0 or 0 < size_comparison:
-                    return 1, -1
-                if size_comparison < 0 or 0 < crop_comparison:
-                    return -1, 1
-        elif self.suggest_mode == -5:
+                return delete_left
+        elif self.suggest_mode == -3:
             if crop_comparison < 0:
-                return 1, -1
+                return delete_right
             if 0 < crop_comparison:
-                return -1, 1
-        elif self.suggest_mode == -2:
+                return delete_left
+        elif self.suggest_mode == -4:
             if 0 < size_comparison:
-                return 1, -1
+                return delete_right
             if size_comparison < 0:
-                return -1, 1
+                return delete_left
+        elif self.suggest_mode == -5:
+            return delete_left
         return 0, 0
 
+    def get_filtered_pair(self, distance_db_row):
+        size_comparison = distance_db_row.size_compare_category
+        crop_comparison = distance_db_row.crop_compare_category
+
+        if self.list_filtered == -3:
+            # if crop_comparison == 0 == size_comparison:
+            return crop_comparison == 0 == size_comparison
+        elif self.list_filtered == -4:
+            # if crop_comparison * size_comparison < 0:
+            return crop_comparison * size_comparison < 0
+        elif self.list_filtered == -5:
+            # if crop_comparison != 0 and size_comparison == 0:
+            return crop_comparison != 0 and size_comparison == 0
+        elif self.list_filtered == -6:
+            # if crop_comparison == 0 and size_comparison != 0:
+            return crop_comparison == 0 and size_comparison != 0
+        elif self.list_filtered == -7:
+            # if crop_comparison * size_comparison > 0:
+            return crop_comparison * size_comparison > 0
+        return False
+
     def update_preview_delete_marks(self, work_pair, thumb_id):
-        id_l = distance_db.im_1[work_pair]
-        id_r = distance_db.im_2[work_pair]
-        # mark_left, mark_right = 0, 0
-        # mark_set = self.marked_pairs.get(work_pair, None)
-        # if mark_set:
-        #     mark_left, mark_right = mark_set
+        id_l = distance_db.im_1.iloc[work_pair]
+        id_r = distance_db.im_2.iloc[work_pair]
         mark_left = distance_db.del_im_1.iloc[work_pair]
         mark_right = distance_db.del_im_2.iloc[work_pair]
         if self.image_delete_candidates.get(id_l, None) and not mark_left:
@@ -2075,9 +2221,9 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
         else:
             self.preview_sheet.delete_marks[thumb_id] = None
 
-        mark_left, mark_right = self.get_delete_suggest(work_pair)
-        if get_dominant_image(work_pair):
-            mark_left, mark_right = mark_right, mark_left
+        mark_left, mark_right = self.get_delete_suggest(work_pair, True)
+        # if get_dominant_image(work_pair):
+        #     mark_left, mark_right = mark_right, mark_left
         self.preview_sheet.suggest_marks[thumb_id] = mark_left, mark_right
 
     def redraw_animation(self):
@@ -2127,10 +2273,13 @@ class VisImSorterGUI(QMainWindow, VisImSorterInterface.Ui_VisImSorter):
         self.slider_image_split_steps.valueChanged.connect(self.slider_image_split_steps_changed)
         self.slider_image_split_steps_changed()
 
-        self.btn_angles.clicked.connect(self.slider_image_max_likeness_changed)
-        self.btn_distances.clicked.connect(self.slider_image_max_likeness_changed)
-        self.slider_image_max_likeness.valueChanged.connect(self.slider_image_max_likeness_changed)
-        self.slider_image_max_likeness_changed()
+        # self.btn_angles.clicked.connect(self.slider_image_max_likeness_changed)
+        # self.btn_distances.clicked.connect(self.slider_image_max_likeness_changed)
+
+        self.btn_show_compare_wnd.clicked.connect(compare_wnd_toggle)
+
+        # self.slider_image_max_likeness.valueChanged.connect(self.slider_image_max_likeness_changed)
+        # self.slider_image_max_likeness_changed()
 
         self.slider_max_pairs.valueChanged.connect(self.slider_max_pairs_changed)
         self.slider_max_pairs_changed()
@@ -2237,6 +2386,7 @@ class VisImSorterGUI(QMainWindow, VisImSorterInterface.Ui_VisImSorter):
         [control.setEnabled(standby_mode) for control in standby_controls]
         self.btn_start.setVisible(standby_mode)
         self.btn_stop.setVisible(not standby_mode)
+        self.btn_show_compare_wnd.setVisible(not standby_mode)
 
         if standby_mode:
             self.btn_stop.setStyleSheet("background-color: rgb(200,150,150)")
@@ -2273,20 +2423,9 @@ class VisImSorterGUI(QMainWindow, VisImSorterInterface.Ui_VisImSorter):
         enforce_equal_folders *= enforce_equal_folders
         self.lbl_slider_enforce_equal.setText("%d" % (self.slider_enforce_equal.value() / 3) + "%")
 
-    def slider_image_max_likeness_changed(self):
-        conf.max_likeness = self.slider_image_max_likeness.value()
-        if self.btn_angles.isChecked():
-            self.lbl_image_max_likeness.setText(f"{conf.max_likeness}%")
-        else:
-            self.lbl_image_max_likeness.setText(f"{int(conf.max_likeness * 300)}")
-
-        if conf.max_likeness == 100:
-            self.lbl_image_max_likeness.setText("off")
-            conf.max_likeness = 0
-
     def slider_max_pairs_changed(self):
         raw_slider = self.slider_max_pairs.value()
-        conf.max_pairs = int(10 * 2.7 ** (0.034 * raw_slider))
+        conf.max_pairs = int(10 * 3 ** (0.04 * raw_slider))
         self.lbl_max_pairs.setText(f"{conf.max_pairs}")
         if raw_slider == 200:
             conf.max_pairs = 0
@@ -2312,7 +2451,6 @@ class VisImSorterGUI(QMainWindow, VisImSorterInterface.Ui_VisImSorter):
         self.drag_timer.start()
 
     def directory_dropped(self, in_dir):
-        # global start_folder
         url_text = unquote(in_dir.mimeData().text())
         firt_path = url_text[8:]
         firt_path_start = url_text[:8]
@@ -2322,7 +2460,6 @@ class VisImSorterGUI(QMainWindow, VisImSorterInterface.Ui_VisImSorter):
                 self.directory_changed()
 
     def directory_changed(self, suppress_text=False):
-        # global start_folder
 
         if os.path.exists(conf.start_folder):
             conf.start_folder = os.path.normpath(conf.start_folder)
@@ -2354,7 +2491,6 @@ class VisImSorterGUI(QMainWindow, VisImSorterInterface.Ui_VisImSorter):
             self.btn_start.setEnabled(False)
 
     def select_folder(self):
-        # global start_folder
         conf.start_folder = QFileDialog.getExistingDirectory(self, "Choose directory", conf.start_folder or "Y:/")
         self.directory_changed()
 
@@ -2362,25 +2498,32 @@ class VisImSorterGUI(QMainWindow, VisImSorterInterface.Ui_VisImSorter):
         if self.progressBar.maximum() != data.progress_max:
             self.progressBar.setRange(0, data.progress_max)
         self.progressBar.setValue(int(data.progress_value))
-        text_to_go, text_end_time = "", ""
-        passed_time = time() - data.event_start_time
-        if data.smooth_time_iterations and data.passed_percent > .01 and passed_time > 5:
-            speed = 1 - (passed_time + 30) / (passed_time + 150)
-            process_end_time = data.event_start_time + passed_time / data.passed_percent
-            for i in range(data.smooth_time_iterations):
-                if data.smooth_end_time[i]:
-                    data.smooth_end_time[i] = mix(data.smooth_end_time[i], process_end_time, speed)
-                    process_end_time = data.smooth_end_time[i]
-                else:
-                    data.smooth_end_time[i] = process_end_time
-            last_time_to_go = gmtime(process_end_time - time())
-            if last_time_to_go.tm_hour:
+        text_to_go, text_end_time, text_to_go2, text_end_time2 = "", "", "", ""
+        step_one_time, step_one_step = data.steps_buffer[0]
+        last_time, last_step = data.steps_buffer[-1]
+        if (data.last_iteration_progress_value != data.progress_value) and time() - last_time > 3:
+            data.last_iteration_progress_value = data.progress_value
+            data.steps_buffer.pop(0)
+            data.steps_buffer.append((time(), data.progress_value))
+
+        if step_one_time > 0:
+            last_period = (time() - step_one_time) / (data.progress_value - step_one_step)
+            if data.smooth_speed is None:
+                data.smooth_speed = np.ones(50) * last_period
+            data_shift = np.roll(data.smooth_speed, 1)
+            data_shift[0] = last_period
+            data.smooth_speed = mix(data.smooth_speed, data_shift, .03)
+            secs_to_go = data.smooth_speed[-1] * (data.progress_max - last_step)
+            finish_time = secs_to_go + last_time
+            time_to_go = gmtime(finish_time - time())
+            if time_to_go.tm_hour:
                 time_text = " To go %H:%M:%S hours."
             else:
                 time_text = " To go %M:%S minutes."
-            text_to_go = strftime(time_text, last_time_to_go)
-            text_end_time = strftime(" Finish at %H:%M:%S.", localtime(process_end_time))
-        self.statusbar.showMessage(data.status_text + text_to_go + text_end_time)
+            text_to_go2 = strftime(time_text, time_to_go)
+            text_end_time2 = strftime(" Finish at %H:%M:%S.", localtime(finish_time))
+
+        self.statusbar.showMessage(data.status_text + text_to_go + text_end_time + text_to_go2 + text_end_time2)
         QApplication.processEvents()
 
 
@@ -2393,6 +2536,7 @@ def main():
 
 
 main_win = VisImSorterGUI
+compare_wnd = CompareGUI
 
 if __name__ == '__main__':
     main()

@@ -1,32 +1,65 @@
+todo: Grouping
+option to change subfolder naming scheme (add color into the name, number of files)
+search similar images to sample image or sample folder with images
+figure out what to do if two files have the same name and belong to the same folder
 
-# todo: option to change subfolder naming scheme (add color into the name, number of files)
-# todo: search similar images to sample image or sample folder with images
-# todo: figure out what to do if two files have the same name and belong to the same folder
+modify sorting algorithm so that final number of folders is roughly equal to desired
+initial grouping is made only using image pairs rather than group pairs
+when searching for closest pairs, sort also by other bands, not only by HSV hue
 
-# todo: modify sorting algorithm so that final number of folders is roughly equal to desired
-# todo: initial grouping is made only using image pairs rather than group pairs
-# todo: when searching for closest pairs, sort also by other bands, not only by HSV hue
+option to group only by pixel count
+asynchronous interface: enable to change settings while scanning
+scan forders and calculate difference between images in each
 
-# todo: option to group only by pixel count
-# todo: asynchronous interface: enable to change settings while scanning
-# todo: scan forders and calculate difference between images in each
-
-# todo: rewrite stage2_regroup into using pool in multiprocessing mode
-
-# todo:
-# todo:
-# todo: highlight pair when mouse hovering
-# todo: Gradients
-# todo: filter to show only pairs with suggested favourite
-# todo: zooming of previews
-# todo: panning of previews
-# todo: load thumbs in separate thread
+rewrite stage2_regroup into using pool in multiprocessing mode
+replace re by fnmatch
 
 
+todo: De-duplication
+clear suggestion options
+drag thumbs
+resize thumbs
+multiline thumbs
+use Gradients to find best fit
 
+zooming of previews
+panning of previews
+load thumbs in separate thread
+limit panning
+
+button to hide options
+(debatable) new comparing method - compare new image to all existing as soon as was added (multiprocessing)
+(debatable) start deep compare in parallel right after first valid pair appeared (multiprocessing)
+on mouse move above thumbs, redraw only 3 thumbs around mouse
+(debatable) adjust best pairs count by image count (debatable - file structure is scanned after count is chosen)
+pan in anim mode by clicking on small pictures
+use native Qt scenes for faster graphics
+load *ui files directly
 
 
 done:
+
+
+stop animation when hiding compare window
+if number of pairs reached preset limit then update acceptable min diff
+drop worst pairs if number of pairs doubles the set limit
+highlight pair when mouse hovering
+indicate suggetions in preview when animating
+do not show compare window after compare complete
+button to show/hide compare window
+good frames around previews
+free memory when completed
+put animation at center in animation mode
+zooming and panning in preview area
+go to first image when switching filter
+show suggestion dimmed after current pair and when pair has marks
+disable "apply marked" and "move applied" buttons
+button to move to first pair
+move "clear marks" to "resort pairs"
+delete "size or crop" button
+disable non-useful suggestions
+switch suggestions when switching filters
+filter to show only pairs with suggested favourite
 when left time is small, make mix faster
 options to autoselect on different criterion
 compare using 3D histograms

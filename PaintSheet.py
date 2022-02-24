@@ -1,6 +1,6 @@
 from PyQt5 import QtGui
 from PyQt5.QtCore import QRect, QPoint, Qt, QSize, QTimer
-from PyQt5.QtGui import QPainter, QPen, QPixmap, QBrush, QPolygon, QRadialGradient
+from PyQt5.QtGui import QPainter, QPen, QPixmap, QBrush, QPolygon, QRadialGradient, QColor
 from PyQt5.QtWidgets import QWidget, QApplication
 
 
@@ -14,13 +14,18 @@ class PaintSheet(QWidget):
         self.painter = QPainter()
         self.separate_pictures = False
         self.separator_line = .5
-        self.separator_mode = False
         self.active_frame = None
         self.hide_marks_timer = QTimer()
         self.hide_marks_timer.timeout.connect(self.hihe_marks)
         self.hide_marks_timer.setInterval(1800)
         self.hide_marks_timer.setSingleShot(True)
         self.force_sizes = None
+        self.img_zoom = 1
+        self.img_xy = QPoint(0, 0)
+        self.pressed_mouse = None
+        self.adjustment_mode = None
+        self.mouse_press_point = None
+        self.suggest_marks = None
 
     def hihe_marks(self):
         self.pos = None
@@ -28,66 +33,111 @@ class PaintSheet(QWidget):
 
     def paintEvent(self, event):
         self.painter = QPainter(self)
-        if self.force_sizes:
-            size_l = self.force_sizes[0] * min(self.width() * (1 - self.separator_line) / self.force_sizes[0].width(),
-                                              self.height() / self.force_sizes[0].height())
-            size_r = self.force_sizes[1] * min(self.width() * (1 - self.separator_line) / self.force_sizes[1].width(),
-                                              self.height() / self.force_sizes[1].height())
-            width_forced = max(size_l.width(), size_r.width())
+        separator_x = self.width() * self.separator_line
+        # green_brush = QBrush(Qt.green)
+        # red_brush = QBrush(Qt.red)
+        # gray_brush = QBrush(Qt.gray)
+        green_brush = QBrush(QColor(0, 255, 0, 60))
+        red_brush = QBrush(QColor(255, 0, 0, 60))
+        gray_brush = QBrush(QColor(120, 120, 120, 60))
+        green_color = 0, 255, 0
+        red_color = 255, 0, 0
+        gray_color = 120, 120, 120
+        # painter.setBrush(QBrush(QColor(*brush_color, brush_alpha)))
+
+        black_dot_line_pen = QPen(Qt.black, 6, Qt.DotLine)
+        black_solid_pen = QPen(Qt.black, 2, Qt.SolidLine)
+        black_bold_pen = QPen(Qt.black, 6, Qt.SolidLine)
+
+        if self.active_frame is not None and type(self.pixmap_r) is QPixmap:
+            size = self.pixmap_r.size() * (self.width() / self.pixmap_r.width())
+            start_y = (self.height() - size.height()) / 2 + self.img_xy.y() / self.height() * size.height()
+            draw_rect = QRect(0, start_y, size.width(), size.height())
+            self.painter.drawPixmap(draw_rect, self.pixmap_r.scaled(size, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+
+            size = self.pixmap_r.size() * min((separator_x - 10) / self.pixmap_r.width(), self.height() / self.pixmap_r.height())
+            start_x = self.width() - separator_x + 10
+            start_point = QPoint(start_x, (self.height() - size.height()) / 2)
+            draw_rect = QRect(start_point, size)
+            self.painter.drawPixmap(draw_rect, self.pixmap_r.scaled(size, Qt.KeepAspectRatio, Qt.SmoothTransformation))
 
         if type(self.pixmap_l) is QPixmap:
-            size = self.pixmap_l.size() * min(self.width() * self.separator_line / self.pixmap_l.width(), self.height() / self.pixmap_l.height())
-            start_point = QPoint(self.width() * self.separator_line - size.width() - 10, (self.height() - size.height()) / 2)
+            size = self.pixmap_l.size() * min((separator_x - 10) / self.pixmap_l.width(), self.height() / self.pixmap_l.height())
+            start_point = QPoint(separator_x - size.width() - 10, (self.height() - size.height()) / 2)
 
             draw_rect = QRect(start_point, size)
             self.painter.drawPixmap(draw_rect, self.pixmap_l.scaled(size, Qt.KeepAspectRatio, Qt.SmoothTransformation))
 
-        if type(self.pixmap_r) is QPixmap:
+        if type(self.pixmap_r) is QPixmap and self.active_frame is None:
             size = self.pixmap_r.size() * min(self.width() * (1 - self.separator_line) / self.pixmap_r.width(), self.height() / self.pixmap_r.height())
-            start_point = QPoint(self.width() * self.separator_line + 10, (self.height() - size.height()) / 2)
-            if self.force_sizes:
-                start_point.setX(self.width() * self.separator_line + 10 + (width_forced - size.width()) / 2)
+            # size *= self.img_zoom
+            start_x = max(separator_x + 10, (self.width() - size.width()) / 2)
+            start_point = QPoint(start_x, (self.height() - size.height()) / 2)
+
             draw_rect = QRect(start_point, size)
             self.painter.drawPixmap(draw_rect, self.pixmap_r.scaled(size, Qt.KeepAspectRatio, Qt.SmoothTransformation))
-            if self.active_frame is not None:
-                green_solid_brush = QBrush(Qt.green)
-                self.painter.setBrush(green_solid_brush)
-                if self.active_frame == 0:
-                    point_x = self.width() * self.separator_line + 20
-                else:
-                    point_x = start_point.x() + size.width() - 40
-                self.painter.drawEllipse(point_x + 2, 10, 20, 20)
-                black_solid_pen = QPen(Qt.black, 2, Qt.SolidLine)
-                self.painter.setPen(black_solid_pen)
-                self.painter.drawEllipse(point_x, 8, 24, 24)
+
+        def draw_dot(x, i, selected):
+            color = [red_color, gray_color, green_color][self.suggest_marks[i] + 1]
+            opacity = 80 if selected else 60
+            self.painter.setBrush(QBrush(QColor(*color, opacity)))
+
+            self.painter.setPen(black_solid_pen if selected else black_bold_pen)
+            radius = 15 if selected else 25
+            point_x = self.width() / 2 + x - radius
+            self.painter.drawEllipse(point_x, 40 - radius, 2 * radius, 2 * radius)
+
+        if self.active_frame is not None and self.suggest_marks:
+            draw_dot(-80, 0, self.active_frame == 1)
+            draw_dot(80, 1, self.active_frame == 0)
 
         if self.pos:
             self.painter.setBrush(QBrush(Qt.blue))
             self.painter.drawEllipse(self.pos, 5, 5)
 
-        if self.separator_mode:
+        if self.adjustment_mode == 3:
             self.painter.setPen(QPen(Qt.blue, 2, Qt.SolidLine))
-            x_pos = self.width() * self.separator_line
-            self.painter.drawLine(x_pos, 0, x_pos, self.height())
+            self.painter.drawLine(separator_x, 0, separator_x, self.height())
 
         self.painter.end()
 
     def mouseMoveEvent(self, event: QtGui.QMouseEvent):
         self.pos = event.pos()
-        if self.separator_mode:
-            self.separator_line = event.x() / self.width()
+        if self.pressed_mouse == 1:
+            self.adjustment_mode = 1
+        elif self.pressed_mouse == 2:
+            self.adjustment_mode = 3
+
+        if self.adjustment_mode == 1:
+            point_diff = event.pos() - self.mouse_press_point
+            point_diff *= point_diff.manhattanLength() ** .3
+            self.img_xy += point_diff
+            self.img_xy.setY(self.img_xy + self.size().height() // 2)
+            print(self.img_xy)
+        elif self.adjustment_mode == 2:
+            new_zoom = self.img_zoom * ((self.mouse_press_point.y() - event.y()) / 200 + 1)
+            zoom_coef = new_zoom / self.img_zoom - 1
+            xy_correction = QPoint(self.width() * (self.separator_line - .5) + 10, 10)
+            self.img_xy += (self.img_xy + xy_correction / 2) * zoom_coef
+            self.img_zoom = new_zoom
+        elif self.adjustment_mode == 3:
+            self.separator_line -= (self.mouse_press_point.x() - event.x()) / self.width()
+
+        if self.adjustment_mode:
+            self.mouse_press_point = event.pos()
+
         self.hide_marks_timer.start()
-        QApplication.processEvents()
         self.update()
         QApplication.processEvents()
 
     def mousePressEvent(self, event: QtGui.QMouseEvent):
-        if event.button() == 2:
-            self.separator_mode = True
+        self.pressed_mouse = event.button()
+        self.mouse_press_point = event.pos()
 
     def mouseReleaseEvent(self, a0: QtGui.QMouseEvent) -> None:
-        if a0.button() == 2:
-            self.separator_mode = False
+        self.pressed_mouse = None
+        self.mouse_press_point = None
+        self.adjustment_mode = None
 
 
 class PreviewSheet(QWidget):
@@ -98,6 +148,7 @@ class PreviewSheet(QWidget):
         self.suggest_marks = [None] * 15
         self.central_pixmap = 0
         self.cursor_pos = None
+        self.thumb_hover = None
         self.setMouseTracking(True)
         self.painter = QPainter()
         self.switch = switch_func
@@ -111,32 +162,45 @@ class PreviewSheet(QWidget):
 
     def hide_marks(self):
         self.cursor_pos = None
+        self.thumb_hover = None
         self.update()
 
     def paintEvent(self, event):
         painter = QPainter(self)
+
+        pen_color = Qt.green
+        pen_width, pen_line = 4, Qt.SolidLine
         green_dot_line_pen = QPen(Qt.green, 4, Qt.DotLine)
         red_dot_line_pen = QPen(Qt.red, 4, Qt.DotLine)
         black_dot_line_pen = QPen(Qt.black, 4, Qt.DotLine)
-
         green_solid_pen = QPen(Qt.green, 2, Qt.SolidLine)
         green_fat_solid_pen = QPen(Qt.green, 4, Qt.SolidLine)
         red_solid_pen = QPen(Qt.red, 2, Qt.SolidLine)
         black_solid_pen = QPen(Qt.black, 2, Qt.SolidLine)
+        white_solid_pen = QPen(Qt.white, 4, Qt.SolidLine)
 
         # green_grad = QRadialGradient(1, 3, 8)
         # green_grad.setColorAt(0, Qt.green)
         # green_grad.setColorAt(15, Qt.cyan)
-        green_solid_brush = QBrush(Qt.green)
-        red_solid_brush = QBrush(Qt.red)
+        # green_solid_brush = QBrush(Qt.green)
+        # red_solid_brush = QBrush(Qt.red)
+        # green_solid_brush = QBrush(Qt.green)
+        # red_solid_brush = QBrush(Qt.red)
         no_brush = QBrush(Qt.NoBrush)
         last_pen = None
+        last_pen_style = (None, None, None)
 
         def set_this_pen(pen, force=False):
             nonlocal last_pen
             if last_pen != pen or force:
                 painter.setPen(pen)
                 last_pen = pen
+
+        def set_this_penstyle(pen_color, pen_width, pen_line, force=False):
+            nonlocal last_pen
+            if (pen_color, pen_width, pen_line) != last_pen_style or force:
+                painter.setPen(QPen(pen_color, pen_width, pen_line))
+                last_pen = (pen_color, pen_width, pen_line)
 
         def draw_thumb(position):
             idx = (self.central_pixmap + position) % 15
@@ -184,24 +248,30 @@ class PreviewSheet(QWidget):
                 else:
                     set_this_pen(red_dot_line_pen)
             else:
-                if position:
-                    set_this_pen(black_solid_pen)
-                else:
+                if position == self.thumb_hover:
+                    set_this_pen(white_solid_pen)
+                    painter.drawRect(draw_rect)
                     set_this_pen(black_dot_line_pen)
+                else:
+                    set_this_pen(black_solid_pen)
             painter.drawRect(draw_rect)
+
+            def draw_mark(mark, mark_center):
+                if mark:
+                    brush_color = (255 * (mark == -1), 255 * (mark == 1), 0)
+                    brush_alpha = 80 if self.delete_marks[idx] else 255
+                    if position > 0:
+                        brush_alpha = 80
+                    painter.setBrush(QBrush(QColor(*brush_color, brush_alpha)))
+                    painter.drawEllipse(mark_center, 10, 10)
 
             if self.suggest_marks[idx]:
                 left_mark, right_mark = self.suggest_marks[idx]
                 left_mark_center = thumb_center + QPoint(-50, -50)
                 right_mark_center = thumb_center + QPoint(50, -50)
-                if left_mark:
-                    painter.setBrush(green_solid_brush if left_mark == 1 else red_solid_brush)
-                    set_this_pen(black_solid_pen)
-                    painter.drawEllipse(left_mark_center, 10, 10)
-                if right_mark:
-                    painter.setBrush(green_solid_brush if right_mark == 1 else red_solid_brush)
-                    set_this_pen(black_solid_pen)
-                    painter.drawEllipse(right_mark_center, 10, 10)
+                set_this_pen(black_solid_pen)
+                draw_mark(left_mark, left_mark_center)
+                draw_mark(right_mark, right_mark_center)
                 painter.setBrush(no_brush)
 
             if not position:
@@ -240,6 +310,7 @@ class PreviewSheet(QWidget):
 
     def mouseMoveEvent(self, event):
         thumb_id = round((event.pos().x() - self.size().width() / 2) / 155)
+        self.thumb_hover = thumb_id
         thumb_center_x = self.size().width() / 2 + thumb_id * 155
         thumb_center_y = self.size().height() / 2
 
