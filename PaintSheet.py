@@ -112,7 +112,10 @@ class PaintSheet(QWidget):
             point_diff = event.pos() - self.mouse_press_point
             point_diff *= point_diff.manhattanLength() ** .3
             self.img_xy += point_diff
-            self.img_xy.setY(self.img_xy + self.size().height() // 2)
+            if self.img_xy.y() > self.size().height() // 2:
+                self.img_xy.setY(self.size().height() // 2)
+            if self.img_xy.y() < -self.size().height() // 2:
+                self.img_xy.setY(-self.size().height() // 2)
             print(self.img_xy)
         elif self.adjustment_mode == 2:
             new_zoom = self.img_zoom * ((self.mouse_press_point.y() - event.y()) / 200 + 1)
