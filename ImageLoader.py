@@ -56,7 +56,7 @@ def load_image(image_full_name):
 
 def generate_image_vector(image_full_names, selected_color_bands: dict, hg_bands, im_divisions, need_hue):
     bands_gaussian = hg_bands ** .5 / 6
-    convert_to = np.uint8 if im_divisions > 15 else np.uint16
+    convert_to = np.uint8 if im_divisions >= 15 else np.uint16
 
     def extract_image_data(im_record):
         img = load_image(im_record.image_paths)

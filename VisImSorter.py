@@ -27,7 +27,7 @@ from PIL import Image, ImageOps, ImageChops, ImageStat
 from PyQt5.QtWidgets import QMessageBox, QFileDialog, QApplication, QMainWindow, QMenu, QAction, QActionGroup
 from PyQt5 import QtCore, QtGui, QtWidgets
 from scipy import ndimage
-from PaintSheet import PaintSheet, PreviewSheet
+from PaintSheet import PaintSheet, ThumbSheet
 from ImageLoader import load_image, generate_image_vector, all_file_types
 # from collections.abc import Mapping, Container
 
@@ -332,71 +332,71 @@ def image_vector_callback(vector_pack):
                f"{image_count:d})", data.progress_value + len(vector_pack), muted=True)
 
 
-def create_distance_db():
-    global distance_db
-    local_run_index = data.run_index
+# def create_distance_db():
+#     global distance_db
+#     local_run_index = data.run_index
 
-    status = "(angles)..." if conf.compare_by_angles else "(distances)..."
-    set_status("(2/4) Comparing image " + status)
-    data.set_smooth_time(20)
-    triangle_distance_db_list = []
-    max_likeness = conf.max_likeness * 1e-2 if conf.compare_by_angles else 300
+#     status = "(angles)..." if conf.compare_by_angles else "(distances)..."
+#     set_status("(2/4) Comparing image " + status)
+#     data.set_smooth_time(20)
+#     triangle_distance_db_list = []
+#     max_likeness = conf.max_likeness * 1e-2 if conf.compare_by_angles else 300
 
-    work_indexes = zip(range(1, image_count // 2 + 2), range(image_count - 1, image_count // 2 - 1, -1))
-    work_indexes = list(dict.fromkeys([s for t in work_indexes for s in t]))
-    im_vectors = {}
-    for color_band in data.working_bands:
-        im_vectors[color_band] = np.stack(image_DB[color_band]).astype(np.int32)
+#     work_indexes = zip(range(1, image_count // 2 + 2), range(image_count - 1, image_count // 2 - 1, -1))
+#     work_indexes = list(dict.fromkeys([s for t in work_indexes for s in t]))
+#     im_vectors = {}
+#     for color_band in data.working_bands:
+#         im_vectors[color_band] = np.stack(image_DB[color_band]).astype(np.int32)
 
-    for i, im_index in enumerate(work_indexes):
-        diff_db = pd.DataFrame({'im_2': range(im_index)})
-        diff_db['im_1'] = im_index
-        diff_db['mean_diffs'] = (image_DB.means[:im_index] - image_DB.means[im_index]).abs()
-        if conf.max_likeness:
-            diff_db = diff_db[diff_db.mean_diffs < conf.max_likeness * 1.35].copy()
-        if len(diff_db) == 0:
-            continue
-        for color_band in data.working_bands:
-            im_vector_sizes = image_DB[color_band + "_size"]
-            if conf.compare_by_angles:
-                distances = 1 - np.dot(im_vectors[color_band][diff_db.im_2], im_vectors[color_band][im_index]) \
-                            / im_vector_sizes[diff_db.im_2] / im_vector_sizes[im_index]
-            else:
-                distances = la_norm((im_vectors[color_band][diff_db.im_2] - im_vectors[color_band][im_index]),
-                                    axis=1).astype(int)
-            diff_db['dist_' + color_band] = distances
-        only_dist_db = diff_db.iloc[:, 3:]
-        diff_db["dist"] = only_dist_db.mean(axis=1)
-        diff_db["size_compare"] = image_DB.megapixels[:im_index] / image_DB.megapixels[im_index]
-        if max_likeness:
-            diff_db = diff_db[diff_db["dist"] < max_likeness]
+#     for i, im_index in enumerate(work_indexes):
+#         diff_db = pd.DataFrame({'im_2': range(im_index)})
+#         diff_db['im_1'] = im_index
+#         diff_db['mean_diffs'] = (image_DB.means[:im_index] - image_DB.means[im_index]).abs()
+#         if conf.max_likeness:
+#             diff_db = diff_db[diff_db.mean_diffs < conf.max_likeness * 1.35].copy()
+#         if len(diff_db) == 0:
+#             continue
+#         for color_band in data.working_bands:
+#             im_vector_sizes = image_DB[color_band + "_size"]
+#             if conf.compare_by_angles:
+#                 distances = 1 - np.dot(im_vectors[color_band][diff_db.im_2], im_vectors[color_band][im_index]) \
+#                             / im_vector_sizes[diff_db.im_2] / im_vector_sizes[im_index]
+#             else:
+#                 distances = la_norm((im_vectors[color_band][diff_db.im_2] - im_vectors[color_band][im_index]),
+#                                     axis=1).astype(int)
+#             diff_db['dist_' + color_band] = distances
+#         only_dist_db = diff_db.iloc[:, 3:]
+#         diff_db["dist"] = only_dist_db.mean(axis=1)
+#         diff_db["size_compare"] = image_DB.megapixels[:im_index] / image_DB.megapixels[im_index]
+#         if max_likeness:
+#             diff_db = diff_db[diff_db["dist"] < max_likeness]
 
-        triangle_distance_db_list.append(diff_db)
-        data.passed_percent = (i + 1) / len(work_indexes)
-        text_to_go = f"(2/4) Comparing image {i + 1:d} of {len(work_indexes):d}."
-        set_status(text_to_go, progress_value=i, muted=True)
-        QApplication.processEvents()
-        if local_run_index != data.run_index:
-            return
+#         triangle_distance_db_list.append(diff_db)
+#         data.passed_percent = (i + 1) / len(work_indexes)
+#         text_to_go = f"(2/4) Comparing image {i + 1:d} of {len(work_indexes):d}."
+#         set_status(text_to_go, progress_value=i, muted=True)
+#         QApplication.processEvents()
+#         if local_run_index != data.run_index:
+#             return
 
-    data.set_smooth_time(0)
-    set_status("(3/4) Final resorting ...")
-    QApplication.processEvents()
-    distance_db = pd.concat(triangle_distance_db_list)
-    distance_db.sort_values("dist", inplace=True)
-    distance_db.reset_index(drop=True, inplace=True)
-    if conf.max_pairs:
-        distance_db = distance_db[:conf.max_pairs].copy()
+#     data.set_smooth_time(0)
+#     set_status("(3/4) Final resorting ...")
+#     QApplication.processEvents()
+#     distance_db = pd.concat(triangle_distance_db_list)
+#     distance_db.sort_values("dist", inplace=True)
+#     distance_db.reset_index(drop=True, inplace=True)
+#     if conf.max_pairs:
+#         distance_db = distance_db[:conf.max_pairs].copy()
 
-    distance_db["size_compare_category"] = 0
-    distance_db["crops"] = None
-    distance_db["crop_compare_category"] = 0
-    distance_db["del_im_1"] = 0
-    distance_db["del_im_2"] = 0
-    categories = {1: 1, 2: 1.1, 3: 3}
-    for category, threshold in categories.items():
-        distance_db.loc[distance_db["size_compare"] > threshold, "size_compare_category"] = -category
-        distance_db.loc[1 / distance_db["size_compare"] > threshold, "size_compare_category"] = category
+#     distance_db["size_compare_category"] = 0
+#     distance_db["crops"] = None
+#     distance_db["crop_compare_category"] = 0
+#     distance_db["del_im_1"] = 0
+#     distance_db["del_im_2"] = 0
+#     categories = {1: 1, 2: 1.1, 3: 3}
+#     for category, threshold in categories.items():
+#         distance_db.loc[distance_db["size_compare"] > threshold, "size_compare_category"] = -category
+#         distance_db.loc[1 / distance_db["size_compare"] > threshold, "size_compare_category"] = category
 
 
 def create_distance_db_multi():
@@ -405,9 +405,7 @@ def create_distance_db_multi():
     distance_db = None
     triangle_distance_db_list = []
     new_lines_count = 0
-    # max_likeness = conf.max_likeness * 1e-2 if conf.compare_by_angles else 300
-    max_likeness = 450
-    # t1 = 0
+    max_likeness = 500000
 
     def compact_distance_db():
         nonlocal max_likeness, new_lines_count
@@ -418,8 +416,9 @@ def create_distance_db_multi():
         distance_db.sort_values("dist", inplace=True)
         triangle_distance_db_list.clear()
         new_lines_count = 0
-        distance_db = distance_db[:conf.max_pairs].copy()
-        max_likeness = min(max_likeness, distance_db.dist.iloc[-1])
+        if distance_db.shape[0] > conf.max_pairs:
+            distance_db = distance_db[:conf.max_pairs].copy()
+            max_likeness = min(max_likeness, distance_db.dist.iloc[-1])
 
     status = "(angles)..." if conf.compare_by_angles else "(distances)..."
     set_status("(2/4) Comparing image " + status)
@@ -432,30 +431,16 @@ def create_distance_db_multi():
         im_vectors[color_band] = np.stack(image_DB[color_band]).astype(np.int32)
 
     for i, im_index in enumerate(work_indexes):
-        # diff_db = pd.DataFrame({'im_2': range(im_index)})
-        # diff_db['im_1'] = im_index
         mean_diffs = (image_DB.means[:im_index] - image_DB.means[im_index]).abs()
-        # diff_db = pd.DataFrame(mean_diffs.rename("mean_diffs"))
-
-        # diff_db['mean_diffs'] = (image_DB.means[:im_index] - image_DB.means[im_index]).abs()
-
-        # if conf.max_likeness:
-        #     diff_db = diff_db[diff_db.mean_diffs < conf.max_likeness * 1.35 + .1].copy()
-        # diff_db = diff_db[diff_db.mean_diffs < conf.max_likeness * 1.35 + .1].copy()
-        working_pairs = mean_diffs < max_likeness #* 500000
+        working_pairs = mean_diffs < max_likeness
         diff_list = {}
-        # if len(diff_db) == 0:
-        #     continue
         if not working_pairs.any():
             continue
         for color_band in data.working_bands:
             color_band_s = color_band + "_size"
-            # im_vector_sizes = image_DB[color_band + "_size"]
-            # im_2s = diff_db.index.get_level_values(1)
-            # im_2s = diff_db.index
             if conf.compare_by_angles:
-                distances = 1 - np.dot(im_vectors[color_band][:im_index][working_pairs], im_vectors[color_band][im_index]) \
-                            / image_DB[color_band_s][:im_index][working_pairs] / image_DB[color_band_s][im_index]
+                distances = (1 - np.dot(im_vectors[color_band][:im_index][working_pairs], im_vectors[color_band][im_index]) \
+                            / image_DB[color_band_s][:im_index][working_pairs] / image_DB[color_band_s][im_index]) * 45000
                 # distances = 1 - np.dot(im_vectors[color_band][diff_db.index], im_vectors[color_band][im_index]) \
                 #             / im_vector_sizes[diff_db.index] / im_vector_sizes[im_index]
             else:
@@ -463,23 +448,12 @@ def create_distance_db_multi():
                                     axis=1).astype(int)
                 # distances = la_norm((im_vectors[color_band][diff_db.im_2] - im_vectors[color_band][im_index]),
                 #                     axis=1).astype(int)
-            # diff_db['dist_' + color_band] = distances
             diff_list['dist_' + color_band] = distances
-        diff_db = pd.DataFrame(diff_list)
-        diff_db["dist"] = diff_db.mean(axis=1) * 450
-        # diff_db["dist"] = diff_db.iloc[:, 1:].mean(axis=1)
+        diff_db = pd.DataFrame(diff_list, index=image_DB[:im_index][working_pairs].index)
+        # diff_db = pd.DataFrame(diff_list)
+        diff_db["dist"] = diff_db.mean(axis=1)
         diff_db["size_compare"] = image_DB.megapixels[:im_index] / image_DB.megapixels[im_index]
-
-        # temp = diff_db["dist"] < max_likeness
-        # if temp.any():
-        #     t2 = mean_diffs[diff_db[temp].index].max() / max_likeness * 100
-        #     t1 = max(t1, t2)
-        #     t3 = sum(mean_diffs < max_likeness) / len(mean_diffs) * 100
-        #     print(f"{t1:.1f}%, {t2:.4f}, {t3:.1f}%")
-
         diff_db = diff_db[diff_db["dist"] < max_likeness]
-        # if max_likeness:
-        #     diff_db = diff_db[diff_db["dist"] < max_likeness]
 
         diff_db = diff_db.set_index(pd.MultiIndex.from_product([diff_db.index, [im_index]], names=["im_2", "im_1"]))
         triangle_distance_db_list.append(diff_db)
@@ -498,12 +472,6 @@ def create_distance_db_multi():
     set_status("(3/4) Final resorting ...")
     QApplication.processEvents()
     compact_distance_db()
-    # distance_db = pd.concat(triangle_distance_db_list)
-    # distance_db.sort_values("dist", inplace=True)
-    # distance_db.reset_index(drop=True, inplace=True)
-    # if conf.max_pairs:
-    #     compact_distance_db()
-        # distance_db = distance_db[:conf.max_pairs].copy()
 
     distance_db.reset_index(inplace=True)
 
@@ -533,8 +501,8 @@ def show_compare_images_gui():
 
     set_status("Preparation complete.", 0)
     QApplication.processEvents()
-
     compare_wnd_toggle()
+
 
 def compare_wnd_toggle():
     if compare_wnd == CompareGUI:
@@ -1491,9 +1459,11 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
 
         self.paint_sheet = PaintSheet(self)
         self.paint_sheet.setSizePolicy(QtWidgets.QSizePolicy(*[QtWidgets.QSizePolicy.Expanding]*2))
-        self.preview_sheet = PreviewSheet(self, self.show_pair, self.mark_pair_visual)
-        self.preview_sheet.setMaximumHeight(155)
-        self.preview_sheet.setMinimumHeight(155)
+        self.thumb_sheet = ThumbSheet(self, self.show_pair, self.mark_pair_visual)
+        self.thumb_sheet.setMaximumHeight(155)
+        self.thumb_sheet.setMinimumHeight(155)
+        self.paint_sheet.thumb_sheet = self.thumb_sheet
+        # self.thumb_sheet.resize(1000, 155)
 
         self.mode_buttons.buttonClicked.connect(self.reset_thumbs)
         self.push_colored.clicked.connect(self.reset_thumbs)
@@ -1508,7 +1478,7 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
         self.push_resort_pairs.clicked.connect(self.resort_pairs)
 
         self.frame_img.layout().addWidget(self.paint_sheet)
-        self.frame_img.layout().addWidget(self.preview_sheet)
+        self.frame_img.layout().addWidget(self.thumb_sheet)
         self.thumb_timer = QtCore.QTimer()
         self.thumb_timer.timeout.connect(self.load_new_thumb)
         self.thumb_timer.setInterval(150)
@@ -1579,7 +1549,7 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
         self.push_mark_clear.setEnabled(False)
         self.image_delete_candidates.clear()
         self.update_all_delete_marks()
-        self.preview_sheet.update()
+        self.thumb_sheet.update()
         self.update_central_lbl()
 
     def mark_suggested_pairs(self):
@@ -1587,7 +1557,7 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
             im_1_mark, im_2_mark = self.get_delete_suggest(work_pair)
             self.mark_pair_in_db(work_pair, im_1_mark, im_2_mark, False)
         self.update_all_delete_marks()
-        self.preview_sheet.update()
+        self.thumb_sheet.update()
         self.update_central_lbl()
 
     def mark_pair_in_db(self, work_pair, im_1_order, im_2_order, force=True):
@@ -1632,7 +1602,7 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
         self.mark_pair_in_db(work_pair, left_order, right_order)
 
         self.update_all_delete_marks()
-        self.preview_sheet.update()
+        self.thumb_sheet.update()
         self.update_central_lbl()
 
     def resort_pairs(self):
@@ -1765,7 +1735,7 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
         main_win.redraw_dialog()
         self.push_resort_pairs.setEnabled(False)
         QApplication.processEvents()
-        self.preview_sheet.central_pixmap = 0
+        self.thumb_sheet.central_pixmap = 0
         self.current_pair = 0
         self.image_delete_candidates.clear()
         # self.marked_pairs.clear()
@@ -1819,7 +1789,7 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
 
         self.image_delete_candidates.clear()
         self.current_pair = 0
-        self.preview_sheet.central_pixmap = 0
+        self.thumb_sheet.central_pixmap = 0
         self.toggle_filter_pairs()
         self.update_all_delete_marks()
         self.reset_thumbs(True)
@@ -1902,7 +1872,7 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
 
     def reset_thumbs(self, button_id):
         if self.thumb_mode != self.mode_buttons.checkedId() or type(button_id) is bool:
-            self.preview_sheet.pixmaps = [None] * 15
+            self.thumb_sheet.pixmaps = [None] * 15
         self.thumb_mode = self.mode_buttons.checkedId()
         self.update_all_delete_marks()
         self.show_pair()
@@ -2032,8 +2002,9 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
                 self.image_pixmaps[1] = make_pixmap(image_r)
 
         if do_thumb:
-            image_r = image_r.resize((240, 240), Image.BILINEAR)
-            image_l = image_l.resize((240, 240), Image.BILINEAR)
+            thm_size = self.thumb_sheet.thumb_size
+            image_r = image_r.resize((thm_size, thm_size), Image.BILINEAR)
+            image_l = image_l.resize((thm_size, thm_size), Image.BILINEAR)
         else:
             if image_l.height > image_r.height:
                 image_r = image_r.resize(image_l.size, Image.BILINEAR)
@@ -2066,22 +2037,22 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
             self.paint_sheet.pixmap_r = None
             self.image_pixmaps = [QtGui.QPixmap] * 4
             for i in range(15):
-                self.preview_sheet.pixmaps[i] = None
-                self.preview_sheet.delete_marks[i] = None
-                self.preview_sheet.suggest_marks[i] = None
+                self.thumb_sheet.pixmaps[i] = None
+                self.thumb_sheet.delete_marks[i] = None
+                self.thumb_sheet.suggest_marks[i] = None
             self.paint_sheet.update()
-            self.preview_sheet.update()
+            self.thumb_sheet.update()
             return
 
         self.current_pair += shift
         self.current_pair %= len(distance_db)
         one_step = -1 if shift < 0 else 1
         for i in range(abs(shift)):
-            self.preview_sheet.central_pixmap = (self.preview_sheet.central_pixmap + one_step) % 15
-            thumb_id = (self.preview_sheet.central_pixmap + 7 * one_step) % 15
-            self.preview_sheet.pixmaps[thumb_id] = None
-            self.preview_sheet.delete_marks[thumb_id] = None
-            self.preview_sheet.suggest_marks[thumb_id] = None
+            self.thumb_sheet.central_pixmap = (self.thumb_sheet.central_pixmap + one_step) % 15
+            thumb_id = (self.thumb_sheet.central_pixmap + 7 * one_step) % 15
+            self.thumb_sheet.pixmaps[thumb_id] = None
+            self.thumb_sheet.delete_marks[thumb_id] = None
+            self.thumb_sheet.suggest_marks[thumb_id] = None
 
         id_l, id_r = get_image_pair(self.current_pair)
         path_l = image_DB.image_paths[id_l]
@@ -2107,7 +2078,7 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
         self.paint_sheet.img_xy = QtCore.QPoint(0, 0)
         self.paint_sheet.img_xy = QtCore.QPoint(0, 0)
         self.paint_sheet.suggest_marks = self.get_delete_suggest(self.current_pair, True)
-        self.preview_sheet.update()
+        self.thumb_sheet.update()
 
         if self.draw_diff_mode:
             self.redraw_animation()
@@ -2131,8 +2102,8 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
     def generate_diff_thumb(self, shift):
         if not len(distance_db):
             return
-        thumb_id = (self.preview_sheet.central_pixmap + shift) % 15
-        if self.preview_sheet.pixmaps[thumb_id]:
+        thumb_id = (self.thumb_sheet.central_pixmap + shift) % 15
+        if self.thumb_sheet.pixmaps[thumb_id]:
             return
         work_pair = (self.current_pair + shift) % len(distance_db)
         id_l, id_r = get_image_pair(work_pair)
@@ -2140,9 +2111,9 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
         image_r = load_image(image_DB.image_paths[id_r]).convert("RGB")
         image_d = self.generate_diff_image2(image_l, image_r, True, work_pair)
 
-        self.preview_sheet.pixmaps[thumb_id] = pixmap_from_image(image_d)
+        self.thumb_sheet.pixmaps[thumb_id] = pixmap_from_image(image_d)
         self.update_preview_delete_marks(work_pair, thumb_id)
-        self.preview_sheet.update()
+        self.thumb_sheet.update()
         return True
 
     def update_all_delete_marks(self):
@@ -2150,7 +2121,7 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
             return
         for i in range(1, 16):
             shift = i // 2 if i % 2 else -i // 2
-            thumb_id = (self.preview_sheet.central_pixmap + shift) % 15
+            thumb_id = (self.thumb_sheet.central_pixmap + shift) % 15
             work_pair = (self.current_pair + shift) % len(distance_db)
             self.update_preview_delete_marks(work_pair, thumb_id)
 
@@ -2188,19 +2159,14 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
         crop_comparison = distance_db_row.crop_compare_category
 
         if self.list_filtered == -3:
-            # if crop_comparison == 0 == size_comparison:
             return crop_comparison == 0 == size_comparison
         elif self.list_filtered == -4:
-            # if crop_comparison * size_comparison < 0:
             return crop_comparison * size_comparison < 0
         elif self.list_filtered == -5:
-            # if crop_comparison != 0 and size_comparison == 0:
             return crop_comparison != 0 and size_comparison == 0
         elif self.list_filtered == -6:
-            # if crop_comparison == 0 and size_comparison != 0:
             return crop_comparison == 0 and size_comparison != 0
         elif self.list_filtered == -7:
-            # if crop_comparison * size_comparison > 0:
             return crop_comparison * size_comparison > 0
         return False
 
@@ -2217,14 +2183,12 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
         if mark_left or mark_right:
             if get_dominant_image(work_pair):
                 mark_left, mark_right = mark_right, mark_left
-            self.preview_sheet.delete_marks[thumb_id] = mark_left, mark_right
+            self.thumb_sheet.delete_marks[thumb_id] = mark_left, mark_right
         else:
-            self.preview_sheet.delete_marks[thumb_id] = None
+            self.thumb_sheet.delete_marks[thumb_id] = None
 
         mark_left, mark_right = self.get_delete_suggest(work_pair, True)
-        # if get_dominant_image(work_pair):
-        #     mark_left, mark_right = mark_right, mark_left
-        self.preview_sheet.suggest_marks[thumb_id] = mark_left, mark_right
+        self.thumb_sheet.suggest_marks[thumb_id] = mark_left, mark_right
 
     def redraw_animation(self):
         if not self.isVisible():
@@ -2295,6 +2259,7 @@ class VisImSorterGUI(QMainWindow, VisImSorterInterface.Ui_VisImSorter):
                              self.list_color_spaces_RGB, self.list_color_spaces_YCbCr]
         for c_list in list_color_spaces:
             [c_list.item(i).setSelected(True) for i in range(3)]
+        [self.list_color_spaces.item(i).setSelected(True) for i in range(2)]
 
         self.btn_stop.clicked.connect(self.stop_button_pressed)
         self.btn_start.clicked.connect(self.start_button_pressed)
@@ -2382,14 +2347,14 @@ class VisImSorterGUI(QMainWindow, VisImSorterInterface.Ui_VisImSorter):
 
     def enable_elements(self, standby_mode=True):
         standby_controls = [self.group_input, self.group_analyze, self.tabWidget,
-                            self.group_move, self.group_final, self.frame_2]
+                            self.group_move, self.group_final]
         [control.setEnabled(standby_mode) for control in standby_controls]
         self.btn_start.setVisible(standby_mode)
         self.btn_stop.setVisible(not standby_mode)
         self.btn_show_compare_wnd.setVisible(not standby_mode)
 
         if standby_mode:
-            self.btn_stop.setStyleSheet("background-color: rgb(200,150,150)")
+            self.btn_stop.setStyleSheet("background-color: rgb(200,150,list_color_spaces)")
             self.btn_stop.setFont(self.font)
             data.progress_value = 0
             self.redraw_dialog()

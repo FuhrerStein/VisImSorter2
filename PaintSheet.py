@@ -3,6 +3,10 @@ from PyQt5.QtCore import QRect, QPoint, Qt, QSize, QTimer
 from PyQt5.QtGui import QPainter, QPen, QPixmap, QBrush, QPolygon, QRadialGradient, QColor
 from PyQt5.QtWidgets import QWidget, QApplication
 
+def restrict(val, min_val, max_val):
+    if val < min_val: return min_val
+    if val > max_val: return max_val
+    return val
 
 class PaintSheet(QWidget):
     def __init__(self, parent=None):
@@ -26,6 +30,7 @@ class PaintSheet(QWidget):
         self.adjustment_mode = None
         self.mouse_press_point = None
         self.suggest_marks = None
+        self.thumb_sheet = ThumbSheet
 
     def hihe_marks(self):
         self.pos = None
@@ -125,6 +130,11 @@ class PaintSheet(QWidget):
             self.img_zoom = new_zoom
         elif self.adjustment_mode == 3:
             self.separator_line -= (self.mouse_press_point.x() - event.x()) / self.width()
+            old_thumb_height = self.thumb_sheet.height()
+            new_thumb_height = restrict(old_thumb_height + (self.mouse_press_point.y() - event.y()), 0, 1000) 
+            self.thumb_sheet.setMaximumHeight(new_thumb_height)
+            self.thumb_sheet.setMinimumHeight(new_thumb_height)
+            self.thumb_sheet.setMaximumHeight(new_thumb_height)
 
         if self.adjustment_mode:
             self.mouse_press_point = event.pos()
@@ -143,7 +153,7 @@ class PaintSheet(QWidget):
         self.adjustment_mode = None
 
 
-class PreviewSheet(QWidget):
+class ThumbSheet(QWidget):
     def __init__(self, parent=None, switch_func=None, mark_func=None):
         QWidget.__init__(self, parent=parent)
         self.pixmaps = [None] * 15
@@ -162,6 +172,7 @@ class PreviewSheet(QWidget):
         self.hide_marks_timer.timeout.connect(self.hide_marks)
         self.hide_marks_timer.setInterval(1800)
         self.hide_marks_timer.setSingleShot(True)
+        self.thumb_size = 150
 
     def hide_marks(self):
         self.cursor_pos = None
@@ -207,21 +218,24 @@ class PreviewSheet(QWidget):
 
         def draw_thumb(position):
             idx = (self.central_pixmap + position) % 15
-            thumb_center = QPoint(self.size().width() / 2 + position * 155, self.size().height() / 2)
-            draw_rect = QRect(thumb_center.x() - 77, 2, 150, 150)
-            set_this_pen(black_solid_pen if position else green_dot_line_pen)
+            half_thumb = self.thumb_size / 2
+            thumb_center_x = self.size().width() / 2 + position * (self.thumb_size + 5)
+            thumb_center_y = min(self.size().height() / 2, half_thumb + 2)
+            thumb_center = QPoint(thumb_center_x, thumb_center_y)
 
-            if thumb_center.x() < -80 or thumb_center.x() > 80 + self.size().width():
+            if thumb_center_x < -half_thumb or thumb_center_x > half_thumb + self.size().width():
                 return
+
+            draw_rect = QRect(thumb_center_x - half_thumb, 2, self.thumb_size, self.thumb_size)
+            # set_this_pen(black_solid_pen if position else green_dot_line_pen)
 
             if type(self.pixmaps[idx]) is QPixmap:
                 painter.drawPixmap(draw_rect, self.pixmaps[idx])
 
             if self.delete_marks[idx]:
-                left_mark = self.delete_marks[idx][0]
-                right_mark = self.delete_marks[idx][1]
-                left_mark_center = thumb_center + QPoint(-50, 50)
-                right_mark_center = thumb_center + QPoint(50, 50)
+                left_mark, right_mark = self.delete_marks[idx]
+                left_mark_center = thumb_center + QPoint(-self.thumb_size / 3, self.thumb_size / 3)
+                right_mark_center = thumb_center + QPoint(self.thumb_size / 3, self.thumb_size / 3)
                 if left_mark == 1:
                     set_this_pen(green_solid_pen)
                     painter.drawLines((left_mark_center - QPoint(10, 0)), (left_mark_center + QPoint(10, 0)),
@@ -262,7 +276,7 @@ class PreviewSheet(QWidget):
             def draw_mark(mark, mark_center):
                 if mark:
                     brush_color = (255 * (mark == -1), 255 * (mark == 1), 0)
-                    brush_alpha = 80 if self.delete_marks[idx] else 255
+                    brush_alpha = 80 if self.delete_marks[idx] or self.central_pixmap + position < 0 else 255
                     if position > 0:
                         brush_alpha = 80
                     painter.setBrush(QBrush(QColor(*brush_color, brush_alpha)))
@@ -270,14 +284,14 @@ class PreviewSheet(QWidget):
 
             if self.suggest_marks[idx]:
                 left_mark, right_mark = self.suggest_marks[idx]
-                left_mark_center = thumb_center + QPoint(-50, -50)
-                right_mark_center = thumb_center + QPoint(50, -50)
+                left_mark_center = thumb_center + QPoint(-self.thumb_size / 3, -self.thumb_size / 3)
+                right_mark_center = thumb_center + QPoint(self.thumb_size / 3, -self.thumb_size / 3)
                 set_this_pen(black_solid_pen)
                 draw_mark(left_mark, left_mark_center)
                 draw_mark(right_mark, right_mark_center)
                 painter.setBrush(no_brush)
 
-            if not position:
+            if position == 0:
                 set_this_pen(green_fat_solid_pen)
                 ctr_x = self.size().width() / 2
                 triangle = QPolygon()
@@ -312,17 +326,18 @@ class PreviewSheet(QWidget):
                 painter.drawLines((right_center - QPoint(10, 0)), (right_center + QPoint(10, 0)))
 
     def mouseMoveEvent(self, event):
-        thumb_id = round((event.pos().x() - self.size().width() / 2) / 155)
+        thumb_id = round((event.pos().x() - self.size().width() / 2) / (self.thumb_size + 5))
         self.thumb_hover = thumb_id
-        thumb_center_x = self.size().width() / 2 + thumb_id * 155
-        thumb_center_y = self.size().height() / 2
+        thumb_center_x = self.size().width() / 2 + thumb_id * (self.thumb_size + 5)
+        thumb_center_y = min(self.size().height() / 2, self.thumb_size / 2 + 2)
 
+        border_size = self.thumb_size / 6
         off_center_x = event.pos().x() - thumb_center_x
         off_center_y = event.pos().y() - thumb_center_y
-        self.mark_intent_l = 1 if off_center_x < -25 else -1
-        self.mark_intent_r = 1 if off_center_x > 25 else -1
-        if abs(off_center_x) < 25:
-            if abs(off_center_y) < 25:
+        self.mark_intent_l = 1 if off_center_x < -border_size else -1
+        self.mark_intent_r = 1 if off_center_x > border_size else -1
+        if abs(off_center_x) < border_size:
+            if abs(off_center_y) < border_size:
                 self.mark_intent_l = 0
                 self.mark_intent_r = 0
             elif off_center_y < 0:
@@ -333,15 +348,18 @@ class PreviewSheet(QWidget):
                 self.mark_intent_r = -1
         self.cursor_pos = event.pos()
         self.hide_marks_timer.start()
-        QApplication.processEvents()
+        # QApplication.processEvents()
         self.update()
-        QApplication.processEvents()
+        # QApplication.processEvents()
 
     def mousePressEvent(self, a0: QtGui.QMouseEvent) -> None:
-        thumb = int((a0.x() - self.size().width() / 2 + 75) // 155)
+        thumb = int((a0.x() - self.size().width() / 2 + self.thumb_size / 2) // (self.thumb_size + 5))
         if a0.button() == Qt.RightButton:
             self.mark(thumb, self.mark_intent_l, self.mark_intent_r)
         elif a0.button() == Qt.LeftButton:
             self.switch(thumb)
+    def resizeEvent(self, a0: QtGui.QResizeEvent) -> None:
+        self.thumb_size = restrict(a0.size().height() - 5, 30, 300)
+        return super().resizeEvent(a0)
 
 
