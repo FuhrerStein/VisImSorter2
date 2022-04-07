@@ -8,7 +8,6 @@ import random
 import re
 import shutil
 import sys
-# import gc
 from time import sleep, localtime, time, gmtime, strftime
 from timeit import default_timer as timer
 
@@ -26,9 +25,10 @@ import psutil
 from PIL import Image, ImageOps, ImageChops, ImageStat
 from PyQt5.QtWidgets import QMessageBox, QFileDialog, QApplication, QMainWindow, QMenu, QAction, QActionGroup
 from PyQt5 import QtCore, QtGui, QtWidgets
+from pyparsing import White
 from scipy import ndimage
-from PaintSheet import PaintSheet, ThumbSheet
-from ImageLoader import load_image, generate_image_vector, all_file_types
+from PaintSheet import PaintSheet, ThumbSheet, ThumbSheet_Scene, recieve_loaded_thumb
+from ImageLoader import load_image, generate_image_vector, all_file_types, generate_thumb_pixmap
 # from collections.abc import Mapping, Container
 
 import CompareDialog
@@ -135,42 +135,6 @@ def set_status(status=None, progress_value=None, progress_max=None, abort=False,
     if abort:
         data.run_index += 1
 
-#
-# def deep_getsizeof(o, ids=None):
-#     """Find the memory footprint of a Python object
-#
-#     This is a recursive function that drills down a Python object graph
-#     like a dictionary holding nested dictionaries with lists of lists
-#     and tuples and sets.
-#
-#     The sys.getsizeof function does a shallow size of only. It counts each
-#     object inside a container as pointer only regardless of how big it
-#     really is.
-#
-#     :param o: the object
-#     :param ids:
-#     :return:
-#     """
-#     if ids == None:
-#         ids = set()
-#     d = deep_getsizeof
-#     if id(o) in ids:
-#         return 0
-#
-#     r = sys.getsizeof(o)
-#     ids.add(id(o))
-#
-#     if isinstance(o, str): # or isinstance(0, unicode):
-#         return r
-#
-#     if isinstance(o, Mapping):
-#         return r + sum(d(k, ids) + d(v, ids) for k, v in o.items())
-#
-#     if isinstance(o, Container):
-#         return r + sum(d(x, ids) for x in o)
-#
-#     return r
-
 
 def run_sequence():
     global function_queue
@@ -183,7 +147,7 @@ def run_sequence():
     function_queue.append(collect_image_vectors)
 
     if conf.search_duplicates:
-        function_queue.append(close_pool)
+        # function_queue.append(close_pool)
         # function_queue.append(create_distance_db)
         function_queue.append(create_distance_db_multi)
         function_queue.append(show_compare_images_gui)
@@ -208,8 +172,8 @@ def run_sequence():
         if create_samples_enabled:
             function_queue.append(create_samples)
 
-    if conf.enable_multiprocessing:
-        function_queue.append(close_pool)
+        if conf.enable_multiprocessing:
+            function_queue.append(close_pool)
 
     start_time = timer()
 
@@ -332,73 +296,6 @@ def image_vector_callback(vector_pack):
                f"{image_count:d})", data.progress_value + len(vector_pack), muted=True)
 
 
-# def create_distance_db():
-#     global distance_db
-#     local_run_index = data.run_index
-
-#     status = "(angles)..." if conf.compare_by_angles else "(distances)..."
-#     set_status("(2/4) Comparing image " + status)
-#     data.set_smooth_time(20)
-#     triangle_distance_db_list = []
-#     max_likeness = conf.max_likeness * 1e-2 if conf.compare_by_angles else 300
-
-#     work_indexes = zip(range(1, image_count // 2 + 2), range(image_count - 1, image_count // 2 - 1, -1))
-#     work_indexes = list(dict.fromkeys([s for t in work_indexes for s in t]))
-#     im_vectors = {}
-#     for color_band in data.working_bands:
-#         im_vectors[color_band] = np.stack(image_DB[color_band]).astype(np.int32)
-
-#     for i, im_index in enumerate(work_indexes):
-#         diff_db = pd.DataFrame({'im_2': range(im_index)})
-#         diff_db['im_1'] = im_index
-#         diff_db['mean_diffs'] = (image_DB.means[:im_index] - image_DB.means[im_index]).abs()
-#         if conf.max_likeness:
-#             diff_db = diff_db[diff_db.mean_diffs < conf.max_likeness * 1.35].copy()
-#         if len(diff_db) == 0:
-#             continue
-#         for color_band in data.working_bands:
-#             im_vector_sizes = image_DB[color_band + "_size"]
-#             if conf.compare_by_angles:
-#                 distances = 1 - np.dot(im_vectors[color_band][diff_db.im_2], im_vectors[color_band][im_index]) \
-#                             / im_vector_sizes[diff_db.im_2] / im_vector_sizes[im_index]
-#             else:
-#                 distances = la_norm((im_vectors[color_band][diff_db.im_2] - im_vectors[color_band][im_index]),
-#                                     axis=1).astype(int)
-#             diff_db['dist_' + color_band] = distances
-#         only_dist_db = diff_db.iloc[:, 3:]
-#         diff_db["dist"] = only_dist_db.mean(axis=1)
-#         diff_db["size_compare"] = image_DB.megapixels[:im_index] / image_DB.megapixels[im_index]
-#         if max_likeness:
-#             diff_db = diff_db[diff_db["dist"] < max_likeness]
-
-#         triangle_distance_db_list.append(diff_db)
-#         data.passed_percent = (i + 1) / len(work_indexes)
-#         text_to_go = f"(2/4) Comparing image {i + 1:d} of {len(work_indexes):d}."
-#         set_status(text_to_go, progress_value=i, muted=True)
-#         QApplication.processEvents()
-#         if local_run_index != data.run_index:
-#             return
-
-#     data.set_smooth_time(0)
-#     set_status("(3/4) Final resorting ...")
-#     QApplication.processEvents()
-#     distance_db = pd.concat(triangle_distance_db_list)
-#     distance_db.sort_values("dist", inplace=True)
-#     distance_db.reset_index(drop=True, inplace=True)
-#     if conf.max_pairs:
-#         distance_db = distance_db[:conf.max_pairs].copy()
-
-#     distance_db["size_compare_category"] = 0
-#     distance_db["crops"] = None
-#     distance_db["crop_compare_category"] = 0
-#     distance_db["del_im_1"] = 0
-#     distance_db["del_im_2"] = 0
-#     categories = {1: 1, 2: 1.1, 3: 3}
-#     for category, threshold in categories.items():
-#         distance_db.loc[distance_db["size_compare"] > threshold, "size_compare_category"] = -category
-#         distance_db.loc[1 / distance_db["size_compare"] > threshold, "size_compare_category"] = category
-
-
 def create_distance_db_multi():
     global distance_db
     local_run_index = data.run_index
@@ -441,16 +338,11 @@ def create_distance_db_multi():
             if conf.compare_by_angles:
                 distances = (1 - np.dot(im_vectors[color_band][:im_index][working_pairs], im_vectors[color_band][im_index]) \
                             / image_DB[color_band_s][:im_index][working_pairs] / image_DB[color_band_s][im_index]) * 45000
-                # distances = 1 - np.dot(im_vectors[color_band][diff_db.index], im_vectors[color_band][im_index]) \
-                #             / im_vector_sizes[diff_db.index] / im_vector_sizes[im_index]
             else:
                 distances = la_norm((im_vectors[color_band][:im_index][working_pairs] - im_vectors[color_band][im_index]),
                                     axis=1).astype(int)
-                # distances = la_norm((im_vectors[color_band][diff_db.im_2] - im_vectors[color_band][im_index]),
-                #                     axis=1).astype(int)
             diff_list['dist_' + color_band] = distances
         diff_db = pd.DataFrame(diff_list, index=image_DB[:im_index][working_pairs].index)
-        # diff_db = pd.DataFrame(diff_list)
         diff_db["dist"] = diff_db.mean(axis=1)
         diff_db["size_compare"] = image_DB.megapixels[:im_index] / image_DB.megapixels[im_index]
         diff_db = diff_db[diff_db["dist"] < max_likeness]
@@ -1459,10 +1351,17 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
 
         self.paint_sheet = PaintSheet(self)
         self.paint_sheet.setSizePolicy(QtWidgets.QSizePolicy(*[QtWidgets.QSizePolicy.Expanding]*2))
-        self.thumb_sheet = ThumbSheet(self, self.show_pair, self.mark_pair_visual)
-        self.thumb_sheet.setMaximumHeight(155)
-        self.thumb_sheet.setMinimumHeight(155)
-        self.paint_sheet.thumb_sheet = self.thumb_sheet
+        # self.thumb_sheet = ThumbSheet(self, self.show_pair, self.mark_pair_visual)
+        # self.thumb_sheet.setMaximumHeight(155)
+        # self.thumb_sheet.setMinimumHeight(155)
+        self.thumb_sheet_scene = ThumbSheet_Scene(self)
+        self.thumb_sheet_scene.setMaximumHeight(155)
+        self.thumb_sheet_scene.setMinimumHeight(155)
+        self.thumb_sheet_scene.view.mark = self.mark_pair_visual
+        self.thumb_sheet_scene.view.show_pair = self.show_pair
+
+        self.paint_sheet.thumb_sheet = self.thumb_sheet_scene
+        # self.paint_sheet.thumb_sheet = self.thumb_sheet
         # self.thumb_sheet.resize(1000, 155)
 
         self.mode_buttons.buttonClicked.connect(self.reset_thumbs)
@@ -1478,10 +1377,11 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
         self.push_resort_pairs.clicked.connect(self.resort_pairs)
 
         self.frame_img.layout().addWidget(self.paint_sheet)
-        self.frame_img.layout().addWidget(self.thumb_sheet)
-        self.thumb_timer = QtCore.QTimer()
-        self.thumb_timer.timeout.connect(self.load_new_thumb)
-        self.thumb_timer.setInterval(150)
+        # self.frame_img.layout().addWidget(self.thumb_sheet)
+        self.frame_img.layout().addWidget(self.thumb_sheet_scene)
+        # self.thumb_timer = QtCore.QTimer()
+        # self.thumb_timer.timeout.connect(self.load_new_thumb)
+        # self.thumb_timer.setInterval(150)
         self.show_pair()
         self.animate_timer = QtCore.QTimer()
         self.animate_timer.timeout.connect(self.redraw_animation)
@@ -1490,6 +1390,9 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
 
         self.label_name_r.mousePressEvent = self.right_label_click
         self.label_name_l.mousePressEvent = self.left_label_click
+        self.thumb_sheet_scene.pair_count = len(distance_db)
+
+        # self.thumb_pool = mp.Pool()
 
     def toggle_filter_pairs(self, check=None):
         global distance_db
@@ -1508,9 +1411,27 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
             undelete_list = distance_db.apply(self.get_filtered_pair, axis=1)  # todo: new procedure here
             distance_db = distance_db[undelete_list]
 
+        # self.thumb_sheet_scene.pair_count = len(distance_db)
+        self.thumb_sheet_scene.clear_scene(len(distance_db))
         self.adjust_suggettions_block()
         self.reset_thumbs(True)
         self.goto_first_pair()
+
+    def get_filtered_pair(self, distance_db_row):
+        size_comparison = distance_db_row.size_compare_category
+        crop_comparison = distance_db_row.crop_compare_category
+
+        if self.list_filtered == -3:
+            return crop_comparison == 0 == size_comparison
+        elif self.list_filtered == -4:
+            return crop_comparison * size_comparison < 0
+        elif self.list_filtered == -5:
+            return crop_comparison != 0 and size_comparison == 0
+        elif self.list_filtered == -6:
+            return crop_comparison == 0 and size_comparison != 0
+        elif self.list_filtered == -7:
+            return crop_comparison * size_comparison > 0
+        return False
 
     def adjust_suggettions_block(self):
         def enable_buttons(bool_list):
@@ -1539,7 +1460,7 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
     def switch_suggested(self, button_id):
         # if self.suggest_mode != self.suggest_buttons.checkedId() or type(button_id) is bool:
         self.suggest_mode = self.suggest_buttons.checkedId()
-        self.update_all_delete_marks()
+        self.update_all_badges()
         self.show_pair()
 
     def clear_marks(self):
@@ -1548,16 +1469,17 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
         self.push_apply_marked.setEnabled(False)
         self.push_mark_clear.setEnabled(False)
         self.image_delete_candidates.clear()
-        self.update_all_delete_marks()
-        self.thumb_sheet.update()
+        self.update_all_badges()
+        # self.thumb_sheet.update()
+        # self.thumb_sheet_scene.update()
         self.update_central_lbl()
 
     def mark_suggested_pairs(self):
         for work_pair in range(self.current_pair + 1):
             im_1_mark, im_2_mark = self.get_delete_suggest(work_pair)
             self.mark_pair_in_db(work_pair, im_1_mark, im_2_mark, False)
-        self.update_all_delete_marks()
-        self.thumb_sheet.update()
+        self.update_all_badges()
+        # self.thumb_sheet.update()
         self.update_central_lbl()
 
     def mark_pair_in_db(self, work_pair, im_1_order, im_2_order, force=True):
@@ -1601,8 +1523,9 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
 
         self.mark_pair_in_db(work_pair, left_order, right_order)
 
-        self.update_all_delete_marks()
-        self.thumb_sheet.update()
+        self.update_all_badges()
+        # self.thumb_sheet.update()
+        # self.thumb_sheet_scene.update()
         self.update_central_lbl()
 
     def resort_pairs(self):
@@ -1735,7 +1658,8 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
         main_win.redraw_dialog()
         self.push_resort_pairs.setEnabled(False)
         QApplication.processEvents()
-        self.thumb_sheet.central_pixmap = 0
+        # self.thumb_sheet.central_pixmap = 0
+        # self.thumb_sheet_scene.central_pixmap = 0
         self.current_pair = 0
         self.image_delete_candidates.clear()
         # self.marked_pairs.clear()
@@ -1783,15 +1707,17 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
         pairs_to_delete = pairs_to_delete_1 | pairs_to_delete_2 | pairs_to_delete_3 | pairs_to_delete_4
 
         distance_db.drop(distance_db[pairs_to_delete].index, inplace=True)
+        self.thumb_sheet_scene.clear_scene(len(distance_db))
 
         print(f"Added {len(self.image_delete_final) - old_image_delete_count} images to delete list, "
               f"totaling {len(self.image_delete_final)}")
 
         self.image_delete_candidates.clear()
         self.current_pair = 0
-        self.thumb_sheet.central_pixmap = 0
+        # self.thumb_sheet.central_pixmap = 0
+        # self.thumb_sheet_scene.central_pixmap = 0
         self.toggle_filter_pairs()
-        self.update_all_delete_marks()
+        self.update_all_badges()
         self.reset_thumbs(True)
 
         self.push_apply_marked.setEnabled(False)
@@ -1872,9 +1798,12 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
 
     def reset_thumbs(self, button_id):
         if self.thumb_mode != self.mode_buttons.checkedId() or type(button_id) is bool:
-            self.thumb_sheet.pixmaps = [None] * 15
+            # self.thumb_sheet.pixmaps = [None] * 15
+            self.thumb_sheet_scene.update_all_thumbs()
         self.thumb_mode = self.mode_buttons.checkedId()
-        self.update_all_delete_marks()
+        border_color = QtCore.Qt.GlobalColor.white if self.thumb_mode == -2 else QtCore.Qt.GlobalColor.black 
+        self.thumb_sheet_scene.box_pen.setColor(border_color)
+        self.update_all_badges()
         self.show_pair()
 
     def load_image_and_pixmap(self, path):
@@ -2002,7 +1931,7 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
                 self.image_pixmaps[1] = make_pixmap(image_r)
 
         if do_thumb:
-            thm_size = self.thumb_sheet.thumb_size
+            thm_size = self.thumb_sheet_scene.thumb_size
             image_r = image_r.resize((thm_size, thm_size), Image.BILINEAR)
             image_l = image_l.resize((thm_size, thm_size), Image.BILINEAR)
         else:
@@ -2024,7 +1953,6 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
 
         if self.thumb_mode == -4:
             image_d = ImageOps.invert(image_d)
-
         return image_d
 
     def show_pair(self, shift=0):
@@ -2036,23 +1964,29 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
             self.paint_sheet.pixmap_l = None
             self.paint_sheet.pixmap_r = None
             self.image_pixmaps = [QtGui.QPixmap] * 4
-            for i in range(15):
-                self.thumb_sheet.pixmaps[i] = None
-                self.thumb_sheet.delete_marks[i] = None
-                self.thumb_sheet.suggest_marks[i] = None
+            # for i in range(15):
+            #     self.thumb_sheet.pixmaps[i] = None
+            #     self.thumb_sheet.delete_marks[i] = None
+            #     self.thumb_sheet.suggest_marks[i] = None
+            #     # self.thumb_sheet_scene.pixmaps[i] = None
+            #     self.thumb_sheet_scene.delete_marks[i] = None
+            #     self.thumb_sheet_scene.suggest_marks[i] = None
             self.paint_sheet.update()
-            self.thumb_sheet.update()
+            # self.thumb_sheet.update()
+            # self.thumb_sheet_scene.update()
             return
 
         self.current_pair += shift
         self.current_pair %= len(distance_db)
-        one_step = -1 if shift < 0 else 1
-        for i in range(abs(shift)):
-            self.thumb_sheet.central_pixmap = (self.thumb_sheet.central_pixmap + one_step) % 15
-            thumb_id = (self.thumb_sheet.central_pixmap + 7 * one_step) % 15
-            self.thumb_sheet.pixmaps[thumb_id] = None
-            self.thumb_sheet.delete_marks[thumb_id] = None
-            self.thumb_sheet.suggest_marks[thumb_id] = None
+        self.thumb_sheet_scene.update_selection()
+        # one_step = -1 if shift < 0 else 1
+        # for i in range(abs(shift)):
+        #     self.thumb_sheet.central_pixmap = (self.thumb_sheet.central_pixmap + one_step) % 15
+        #     thumb_id = (self.thumb_sheet.central_pixmap + 7 * one_step) % 15
+        #     self.thumb_sheet.pixmaps[thumb_id] = None
+        #     self.thumb_sheet.delete_marks[thumb_id] = None
+        #     self.thumb_sheet.suggest_marks[thumb_id] = None
+        self.update_all_badges()
 
         id_l, id_r = get_image_pair(self.current_pair)
         path_l = image_DB.image_paths[id_l]
@@ -2078,7 +2012,8 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
         self.paint_sheet.img_xy = QtCore.QPoint(0, 0)
         self.paint_sheet.img_xy = QtCore.QPoint(0, 0)
         self.paint_sheet.suggest_marks = self.get_delete_suggest(self.current_pair, True)
-        self.thumb_sheet.update()
+        # self.thumb_sheet.update()
+        # self.thumb_sheet_scene.update()
 
         if self.draw_diff_mode:
             self.redraw_animation()
@@ -2088,42 +2023,114 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
 
             self.paint_sheet.update()
             # self.preview_sheet.update()
-        self.thumb_timer.start()
+        # self.thumb_timer.start()
 
-    def load_new_thumb(self):
-        if not self.isVisible():
-            self.thumb_timer.stop()
-            return
-        for i in range(1, 16):
-            thumb_id = i // 2 if i % 2 else -i // 2
-            if self.generate_diff_thumb(thumb_id):
-                return
+    # def load_new_thumb(self):
+    #     if not self.isVisible():
+    #         self.thumb_timer.stop()
+    #         return
+        # for i in range(1, 2):
+        #     thumb_id = i // 2 if i % 2 else -i // 2
+        #     if self.generate_diff_thumb(thumb_id):
+        #         return
 
-    def generate_diff_thumb(self, shift):
-        if not len(distance_db):
-            return
-        thumb_id = (self.thumb_sheet.central_pixmap + shift) % 15
-        if self.thumb_sheet.pixmaps[thumb_id]:
-            return
-        work_pair = (self.current_pair + shift) % len(distance_db)
-        id_l, id_r = get_image_pair(work_pair)
-        image_l = load_image(image_DB.image_paths[id_l]).convert("RGB")
-        image_r = load_image(image_DB.image_paths[id_r]).convert("RGB")
-        image_d = self.generate_diff_image2(image_l, image_r, True, work_pair)
+    # def generate_diff_thumb(self, shift):
+    #     if not len(distance_db):
+    #         return
+    #     thumb_id = (self.thumb_sheet.central_pixmap + shift) % 15
+    #     if self.thumb_sheet.pixmaps[thumb_id]:
+    #         return
+    #     if thumb_id in self.thumb_sheet_scene.thumbs_items.keys():
+    #         return
+    #     work_pair = (self.current_pair + shift) % len(distance_db)
+    #     id_l, id_r = get_image_pair(work_pair)
+    #     image_l = load_image(image_DB.image_paths[id_l]).convert("RGB")
+    #     image_r = load_image(image_DB.image_paths[id_r]).convert("RGB")
+    #     image_d = self.generate_diff_image2(image_l, image_r, True, work_pair)
 
-        self.thumb_sheet.pixmaps[thumb_id] = pixmap_from_image(image_d)
-        self.update_preview_delete_marks(work_pair, thumb_id)
-        self.thumb_sheet.update()
-        return True
+    #     self.thumb_sheet.pixmaps[thumb_id] = pixmap_from_image(image_d)
+    #     self.thumb_sheet_scene.add_thumb_item(thumb_id, pixmap_from_image(image_d))
+    #     # self.update_preview_delete_marks(work_pair, thumb_id)
+    #     self.thumb_sheet.update()
+    #     return True
 
-    def update_all_delete_marks(self):
-        if not len(distance_db):
+    def request_thumb(self, thumb_id):
+        if thumb_id >= len(distance_db):
             return
-        for i in range(1, 16):
-            shift = i // 2 if i % 2 else -i // 2
-            thumb_id = (self.thumb_sheet.central_pixmap + shift) % 15
-            work_pair = (self.current_pair + shift) % len(distance_db)
-            self.update_preview_delete_marks(work_pair, thumb_id)
+        print(f"Pair {thumb_id} stage *")
+        id_l, id_r = get_image_pair(thumb_id)
+        im_l = image_DB.image_paths[id_l]
+        im_r = image_DB.image_paths[id_r]
+        crop_l, crop_r = get_image_pair_crops(thumb_id)
+        thm_size = self.thumb_sheet_scene.thumb_size - 12
+        thumb_mode = self.thumb_mode
+        thumb_colored = self.push_colored.isChecked()
+        
+        load_options = [im_l, im_r, crop_l, crop_r, thm_size, thumb_mode, thumb_colored, thumb_id]
+        pool.apply_async(generate_thumb_pixmap, load_options, callback=recieve_loaded_thumb)
+        # print(f"Pair {thumb_id} stage **")
+
+    # def update_all_delete_marks(self):
+    #     if not len(distance_db):
+    #         return
+    #     for i in range(1, 16):
+    #         shift = i // 2 if i % 2 else -i // 2
+    #         thumb_id = (self.thumb_sheet.central_pixmap + shift) % 15
+    #         work_pair = (self.current_pair + shift) % len(distance_db)
+    #         self.update_preview_delete_marks(work_pair, thumb_id)
+
+    def update_all_badges(self):
+        self.thumb_sheet_scene.badges_version += 1
+        # for i in range(1, len(distance_db) * 2):
+        # for i in range(1, 100):
+        #     work_pair = self.current_pair - ((-i, i)[i % 2] // 2)
+        #     if work_pair not in range(1, len(distance_db)):
+        #         continue
+        #     self.update_single_thumb_badges(work_pair)
+
+    def update_single_thumb_badges(self, work_pair):
+        mark_left = distance_db.del_im_1.iloc[work_pair]
+        mark_right = distance_db.del_im_2.iloc[work_pair]
+        id_l = distance_db.im_1.iloc[work_pair]
+        id_r = distance_db.im_2.iloc[work_pair]
+        fatal_left = id_l in self.image_delete_candidates and mark_left != -1
+        fatal_right = id_r in self.image_delete_candidates and mark_right != -1
+        if get_dominant_image(work_pair):
+            mark_left, mark_right = mark_right, mark_left
+            fatal_left, fatal_right = fatal_right, fatal_left
+        suggest_left, suggest_right = self.get_delete_suggest(work_pair, True)
+        self.thumb_sheet_scene.update_badges(work_pair, [suggest_left, suggest_right, fatal_left, fatal_right, mark_left, mark_right])
+
+
+    # def update_preview_delete_marks(self, work_pair, thumb_id):
+    #     id_l = distance_db.im_1.iloc[work_pair]
+    #     id_r = distance_db.im_2.iloc[work_pair]
+    #     mark_left = distance_db.del_im_1.iloc[work_pair]
+    #     mark_right = distance_db.del_im_2.iloc[work_pair]
+    #     if self.image_delete_candidates.get(id_l, None) and not mark_left:
+    #         mark_left = -2
+    #     if self.image_delete_candidates.get(id_r, None) and not mark_right:
+    #         mark_right = -2
+
+    #     if get_dominant_image(work_pair):
+    #         mark_left, mark_right = mark_right, mark_left
+        
+
+    #     self.thumb_sheet.delete_marks[thumb_id] = mark_right, mark_left
+
+    #     # if mark_left or mark_right:
+    #     #     self.thumb_sheet.delete_marks[thumb_id] = mark_left, mark_right
+    #     #     self.thumb_sheet_scene.delete_marks[thumb_id] = mark_left, mark_right
+    #     # else:
+    #     #     # self.thumb_sheet.delete_marks[thumb_id] = None
+    #     #     # self.thumb_sheet_scene.delete_marks[thumb_id] = None
+    #     #     self.thumb_sheet.delete_marks[thumb_id] = 0, 0
+    #     #     self.thumb_sheet_scene.delete_marks[thumb_id] = 0, 0
+
+    #     suggest_left, suggest_right = self.get_delete_suggest(work_pair, True)
+    #     self.thumb_sheet.suggest_marks[thumb_id] = suggest_left, suggest_right
+    #     # self.thumb_sheet_scene.suggest_marks[thumb_id] = suggest_left, suggest_right
+    #     self.thumb_sheet_scene.update_marks(work_pair, mark_left, mark_right, suggest_left, suggest_right)
 
     def get_delete_suggest(self, work_pair, check_flip=False):
         distance_db_row = distance_db.iloc[work_pair]
@@ -2153,42 +2160,6 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
         elif self.suggest_mode == -5:
             return delete_left
         return 0, 0
-
-    def get_filtered_pair(self, distance_db_row):
-        size_comparison = distance_db_row.size_compare_category
-        crop_comparison = distance_db_row.crop_compare_category
-
-        if self.list_filtered == -3:
-            return crop_comparison == 0 == size_comparison
-        elif self.list_filtered == -4:
-            return crop_comparison * size_comparison < 0
-        elif self.list_filtered == -5:
-            return crop_comparison != 0 and size_comparison == 0
-        elif self.list_filtered == -6:
-            return crop_comparison == 0 and size_comparison != 0
-        elif self.list_filtered == -7:
-            return crop_comparison * size_comparison > 0
-        return False
-
-    def update_preview_delete_marks(self, work_pair, thumb_id):
-        id_l = distance_db.im_1.iloc[work_pair]
-        id_r = distance_db.im_2.iloc[work_pair]
-        mark_left = distance_db.del_im_1.iloc[work_pair]
-        mark_right = distance_db.del_im_2.iloc[work_pair]
-        if self.image_delete_candidates.get(id_l, None) and not mark_left:
-            mark_left = -2
-        if self.image_delete_candidates.get(id_r, None) and not mark_right:
-            mark_right = -2
-
-        if mark_left or mark_right:
-            if get_dominant_image(work_pair):
-                mark_left, mark_right = mark_right, mark_left
-            self.thumb_sheet.delete_marks[thumb_id] = mark_left, mark_right
-        else:
-            self.thumb_sheet.delete_marks[thumb_id] = None
-
-        mark_left, mark_right = self.get_delete_suggest(work_pair, True)
-        self.thumb_sheet.suggest_marks[thumb_id] = mark_left, mark_right
 
     def redraw_animation(self):
         if not self.isVisible():

@@ -1,4 +1,4 @@
-todo: Grouping
+------------  todo: Grouping
 option to change subfolder naming scheme (add color into the name, number of files)
 search similar images to sample image or sample folder with images
 figure out what to do if two files have the same name and belong to the same folder
@@ -15,31 +15,38 @@ rewrite stage2_regroup into using pool in multiprocessing mode
 replace re by fnmatch
 
 
-todo: De-duplication
+------------  todo: De-duplication
 clear suggestion options
-drag thumbs
-resize thumbs
-multiline thumbs
 use Gradients to find best fit
 
 zooming of previews
 panning of previews
-load thumbs in separate thread
-limit panning
 
 button to hide options
 (debatable) new comparing method - compare new image to all existing as soon as was added (multiprocessing)
 (debatable) start deep compare in parallel right after first valid pair appeared (multiprocessing)
-on mouse move above thumbs, redraw only 3 thumbs around mouse
 (debatable) adjust best pairs count by image count (debatable - file structure is scanned after count is chosen)
-pan in anim mode by clicking on small pictures
-use native Qt scenes for faster graphics
+
+
 load *ui files directly
+animate with https://doc.qt.io/qtforpython-5/overviews/animation-overview.html?highlight=graphics%20framework
+
+when active pair changes from outside thumbs, scroll so that selected thumb is in center
+ignore vertical mouse movements over thumbs
+fill augmented parts with distinct brush
+move view window when resizing thumbs
 
 
-done:
+------------  done:
 
 
+
+
+limit panning
+load thumbs in separate thread
+resize thumbs
+pan in anim mode by hovering (use animation)
+use native Qt scenes for faster graphics
 stop animation when hiding compare window
 if number of pairs reached preset limit then update acceptable min diff
 drop worst pairs if number of pairs doubles the set limit
