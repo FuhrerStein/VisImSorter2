@@ -27,7 +27,7 @@ from PyQt5.QtWidgets import QMessageBox, QFileDialog, QApplication, QMainWindow,
 from PyQt5 import QtCore, QtGui, QtWidgets
 from pyparsing import White
 from scipy import ndimage
-from PaintSheet import PaintSheet, ThumbSheet, ThumbSheet_Scene, recieve_loaded_thumb
+from PaintSheet import PaintSheet, ThumbSheet_Scene, recieve_loaded_thumb
 from ImageLoader import load_image, generate_image_vector, all_file_types, generate_thumb_pixmap
 # from collections.abc import Mapping, Container
 

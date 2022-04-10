@@ -30,15 +30,7 @@ def pixmap_from_image(im):
 thumb_queue = {}
 
 def recieve_loaded_thumb(data):
-    # print("got something ", end="")
-    # print(data[0])
-    # print(data[1].size)
     thumb_queue[data[0]] = data[1]
-    # thm_pixmax = pixmap_from_image(into[1])
-    # thumb_sheet_obj.add_thumb_item(into[0], thm_pixmax)
-    # print(aa)
-    # print(into[0])
-
 
 class PaintSheet(QWidget):
     def __init__(self, parent=None):
@@ -396,6 +388,9 @@ class PaintSheet(QWidget):
 class ThumbsView(QGraphicsView):
     view_left = 0
     last_mouse_x = 0
+    last_mouse = QPoint()
+    mouse_move_average = QPoint()
+    mouse_direction_average = 1.
     autoscroll_speed = .0
     parking_stopper = .0
     this_tile_number = -1
@@ -421,6 +416,17 @@ class ThumbsView(QGraphicsView):
 
     def mouseMoveEvent(self, event: QtGui.QMouseEvent) -> None:
         self.parking_stopper = mix(self.parking_stopper, 1, .2)
+        last_dxdy = event.pos() - self.last_mouse
+        self.last_mouse = event.pos()
+        last_direction = (restrict(abs(last_dxdy.x()) + .1, .1, 10) - restrict(abs(last_dxdy.y()) + .1, .1, 10)) / 8 + .5
+        self.mouse_direction_average = mix(self.mouse_direction_average, last_direction, .1)
+
+        # self.mouse_move_average = mix(self.mouse_move_average, event.pos() - self.last_mouse, .2)
+        # scroll_down = restrict(abs(self.mouse_move_average.x()) + 1, 1, 10) / restrict(abs(self.mouse_move_average.y()) + 1, 1, 10)
+        self.scroll_stoper = mix(0.5, self.scroll_stoper, smootherstep_ease(self.mouse_direction_average))
+        # print(f"{self.mouse_direction_average:.3f}, {last_direction:.3f}, {self.scroll_stoper:.3f}")
+
+        
         if self.pressed_mouse == 1:
             movement = event.pos() - self.pressed_coord
             movement_sum = abs(movement.x()) + abs(movement.y())
@@ -636,6 +642,8 @@ class ImageThumb(QtWidgets.QGraphicsPixmapItem):
         self.red_brush_semi = QBrush(QtGui.QColor(255, 0, 0, 50))
         self.green_brush = QBrush(Qt.green)
         self.green_brush_semi = QBrush(QtGui.QColor(0, 255, 0, 50))
+        self.brush_list = [self.red_brush, self.red_brush_semi,
+                           self.green_brush, self.green_brush_semi]
         self.black_pen = QPen(Qt.GlobalColor.black, 1)
 
         def init_element(go_green=False):
@@ -685,7 +693,7 @@ class ImageThumb(QtWidgets.QGraphicsPixmapItem):
 
     def set_marks_ext(self, marks, badges_version, current_pair):
         self.badges_version = badges_version
-        dim_suggests = self.thumb_id > current_pair or any(marks[2:])
+        dim_suggests = int(self.thumb_id > current_pair or any(marks[2:]))
         self.set_brush_pen(self.left_suggest, marks[0], dim_suggests)
         self.set_brush_pen(self.right_suggest, marks[1], dim_suggests)
         self.show_hide(self.left_fatal, marks[2])
@@ -697,18 +705,23 @@ class ImageThumb(QtWidgets.QGraphicsPixmapItem):
         self.show_hide(self.right_choose_minus, marks[5] == -1)
 
     def show_hide(self, element, mark):
-        if mark:
-            element.show()
-        else:
-            element.hide()
+        element.show() if mark else element.hide()
+
+        # if mark:
+        #     element.show()
+        # else:
+        #     element.hide()
 
     def set_brush_pen(self, item: QGraphicsEllipseItem, mark, translucent):
         if mark == 0:
             item.hide()
         else:
             item.show()
-            if mark < 0:
-                item.setBrush(self.red_brush_semi if translucent else self.red_brush)
-            else:
-                item.setBrush(self.green_brush_semi if translucent else self.green_brush)
+            brush_id = (mark < 0) * 2 + translucent
+            item.setBrush(self.brush_list[brush_id])
+
+            # if mark < 0:
+            #     item.setBrush(self.red_brush_semi if translucent else self.red_brush)
+            # else:
+            #     item.setBrush(self.green_brush_semi if translucent else self.green_brush)
 
