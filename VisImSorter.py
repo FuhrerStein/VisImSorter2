@@ -69,7 +69,7 @@ class Config:
     hg_bands_count = 0
 
     enable_stage2_grouping = False
-    enable_multiprocessing = True
+    # enable_multiprocessing = True
     stage1_grouping_type = 0
     folder_constraint_value = 0
     folder_constraint_type = 0
@@ -140,15 +140,12 @@ def run_sequence():
     global function_queue
     local_run_index = data.run_index
 
-    if conf.enable_multiprocessing:
-        function_queue.append(init_pool)
-
+    # if conf.enable_multiprocessing:
+    function_queue.append(init_pool)
     function_queue.append(scan_for_images)
     function_queue.append(collect_image_vectors)
 
     if conf.search_duplicates:
-        # function_queue.append(close_pool)
-        # function_queue.append(create_distance_db)
         function_queue.append(create_distance_db_multi)
         function_queue.append(show_compare_images_gui)
     else:
@@ -172,8 +169,8 @@ def run_sequence():
         if create_samples_enabled:
             function_queue.append(create_samples)
 
-        if conf.enable_multiprocessing:
-            function_queue.append(close_pool)
+        # if conf.enable_multiprocessing:
+        function_queue.append(close_pool)
 
     start_time = timer()
 
@@ -187,8 +184,8 @@ def run_sequence():
         single_function = function_queue.pop(0)
         single_function()
         if local_run_index != data.run_index:
-            if conf.enable_multiprocessing:
-                close_pool()
+            # if conf.enable_multiprocessing:
+            close_pool()
             return
 
     finish_time = timer()
@@ -1335,12 +1332,11 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
     animation_frame = 0
     thumb_mode = -2
     suggest_mode = 0
-    # suggested_deletes = dict()
     image_delete_candidates = {}
     image_delete_final = set()
     size_comparison = 0
     # resort_with_crops = True
-    list_filtered = False
+    list_filtered = -2
     original_distance_db = None
 
     def __init__(self):
@@ -1351,9 +1347,6 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
 
         self.paint_sheet = PaintSheet(self)
         self.paint_sheet.setSizePolicy(QtWidgets.QSizePolicy(*[QtWidgets.QSizePolicy.Expanding]*2))
-        # self.thumb_sheet = ThumbSheet(self, self.show_pair, self.mark_pair_visual)
-        # self.thumb_sheet.setMaximumHeight(155)
-        # self.thumb_sheet.setMinimumHeight(155)
         self.thumb_sheet_scene = ThumbSheet_Scene(self)
         self.thumb_sheet_scene.setMaximumHeight(155)
         self.thumb_sheet_scene.setMinimumHeight(155)
@@ -1361,8 +1354,6 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
         self.thumb_sheet_scene.view.show_pair = self.show_pair
 
         self.paint_sheet.thumb_sheet = self.thumb_sheet_scene
-        # self.paint_sheet.thumb_sheet = self.thumb_sheet
-        # self.thumb_sheet.resize(1000, 155)
 
         self.mode_buttons.buttonClicked.connect(self.reset_thumbs)
         self.push_colored.clicked.connect(self.reset_thumbs)
@@ -1377,11 +1368,7 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
         self.push_resort_pairs.clicked.connect(self.resort_pairs)
 
         self.frame_img.layout().addWidget(self.paint_sheet)
-        # self.frame_img.layout().addWidget(self.thumb_sheet)
         self.frame_img.layout().addWidget(self.thumb_sheet_scene)
-        # self.thumb_timer = QtCore.QTimer()
-        # self.thumb_timer.timeout.connect(self.load_new_thumb)
-        # self.thumb_timer.setInterval(150)
         self.show_pair()
         self.animate_timer = QtCore.QTimer()
         self.animate_timer.timeout.connect(self.redraw_animation)
@@ -1391,8 +1378,6 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
         self.label_name_r.mousePressEvent = self.right_label_click
         self.label_name_l.mousePressEvent = self.left_label_click
         self.thumb_sheet_scene.pair_count = len(distance_db)
-
-        # self.thumb_pool = mp.Pool()
 
     def toggle_filter_pairs(self, check=None):
         global distance_db
@@ -1411,7 +1396,6 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
             undelete_list = distance_db.apply(self.get_filtered_pair, axis=1)  # todo: new procedure here
             distance_db = distance_db[undelete_list]
 
-        # self.thumb_sheet_scene.pair_count = len(distance_db)
         self.thumb_sheet_scene.clear_scene(len(distance_db))
         self.adjust_suggettions_block()
         self.reset_thumbs(True)
@@ -1434,31 +1418,46 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
         return False
 
     def adjust_suggettions_block(self):
-        def enable_buttons(bool_list):
-            for button, option in zip(self.suggest_buttons.buttons(), bool_list):
-                button.setEnabled(option)
+        filter_settings = {
+            -2: [2, 1, 1, 1, 1],
+            -3: [0, 0, 0, 2, 1],
+            -4: [2, 1, 1, 1, 1],
+            -5: [0, 2, 0, 1, 1],
+            -6: [0, 0, 2, 1, 1],
+            -7: [0, 1, 2, 1, 1],
+        }
 
-        if self.list_filtered == -2:
-            self.push_suggest_size_and_crop.click()
-            enable_buttons([1, 1, 1, 1, 1])
-        elif self.list_filtered == -3:
-            self.push_suggest_any.click()
-            enable_buttons([0, 0, 0, 1, 1])
-        elif self.list_filtered == -4:
-            enable_buttons([1, 1, 1, 1, 1])
-            self.push_suggest_size_and_crop.click()
-        elif self.list_filtered == -5:
-            enable_buttons([0, 1, 0, 1, 1])
-            self.push_suggest_crop_only.click()
-        elif self.list_filtered == -6:
-            enable_buttons([0, 0, 1, 1, 1])
-            self.push_suggest_size_only.click()
-        elif self.list_filtered == -7:
-            enable_buttons([0, 1, 1, 1, 1])
-            self.push_suggest_size_and_crop.click()
+        enabled_buttons = filter_settings[self.list_filtered]
+        for button, option in zip(self.suggest_buttons.buttons(), enabled_buttons):
+            button.setEnabled(option)
+            if option > 1:
+                button.click()
+
+    # def adjust_suggettions_block(self):
+        # def enable_buttons(bool_list):
+        #     for button, option in zip(self.suggest_buttons.buttons(), bool_list):
+        #         button.setEnabled(option)
+        
+        # if self.list_filtered == -2:
+        #     self.push_suggest_size_and_crop.click()
+        #     enable_buttons([1, 1, 1, 1, 1])
+        # elif self.list_filtered == -3:
+        #     self.push_suggest_any.click()
+        #     enable_buttons([0, 0, 0, 1, 1])
+        # elif self.list_filtered == -4:
+        #     enable_buttons([1, 1, 1, 1, 1])
+        #     self.push_suggest_size_and_crop.click()
+        # elif self.list_filtered == -5:
+        #     enable_buttons([0, 1, 0, 1, 1])
+        #     self.push_suggest_crop_only.click()
+        # elif self.list_filtered == -6:
+        #     enable_buttons([0, 0, 1, 1, 1])
+        #     self.push_suggest_size_only.click()
+        # elif self.list_filtered == -7:
+        #     enable_buttons([0, 1, 1, 1, 1])
+        #     self.push_suggest_size_and_crop.click()
 
     def switch_suggested(self, button_id):
-        # if self.suggest_mode != self.suggest_buttons.checkedId() or type(button_id) is bool:
         self.suggest_mode = self.suggest_buttons.checkedId()
         self.update_all_badges()
         self.show_pair()
@@ -1470,8 +1469,6 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
         self.push_mark_clear.setEnabled(False)
         self.image_delete_candidates.clear()
         self.update_all_badges()
-        # self.thumb_sheet.update()
-        # self.thumb_sheet_scene.update()
         self.update_central_lbl()
 
     def mark_suggested_pairs(self):
@@ -1479,7 +1476,6 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
             im_1_mark, im_2_mark = self.get_delete_suggest(work_pair)
             self.mark_pair_in_db(work_pair, im_1_mark, im_2_mark, False)
         self.update_all_badges()
-        # self.thumb_sheet.update()
         self.update_central_lbl()
 
     def mark_pair_in_db(self, work_pair, im_1_order, im_2_order, force=True):
@@ -1524,8 +1520,6 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
         self.mark_pair_in_db(work_pair, left_order, right_order)
 
         self.update_all_badges()
-        # self.thumb_sheet.update()
-        # self.thumb_sheet_scene.update()
         self.update_central_lbl()
 
     def resort_pairs(self):
@@ -1601,7 +1595,6 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
             QApplication.processEvents()
             if best_crop_dist > best_dist:
                 resized_thumb_cache.clear()
-                # gc.collect()
                 return best_dist, crops
             else:
                 crops[best_crop_id] += 1
@@ -1652,21 +1645,20 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
         distance_db.reset_index(drop=True, inplace=True)
         conf.compare_by_angles = False
 
+        self.push_show_size_and_crop.setEnabled(True)
+        self.push_show_crop_only.setEnabled(True)
+        self.push_show_mixed_only.setEnabled(True)
+  
         thumb_cache.clear()
         data.set_smooth_time(0)
         set_status("Resort complete. Showing image pairs.", 0, 100)
         main_win.redraw_dialog()
         self.push_resort_pairs.setEnabled(False)
         QApplication.processEvents()
-        # self.thumb_sheet.central_pixmap = 0
-        # self.thumb_sheet_scene.central_pixmap = 0
         self.current_pair = 0
         self.image_delete_candidates.clear()
-        # self.marked_pairs.clear()
         self.reset_thumbs(True)
         self.show()
-        # self.update_all_delete_marks()
-        # self.show_pair()
 
     def right_label_click(self, a0: QtGui.QMouseEvent):
         if a0.button() == 1:
@@ -1684,7 +1676,6 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
         if self.draw_diff_mode:
             self.toggle_diff_mode()
         main_win.btn_show_compare_wnd.setChecked(False)
-        # self.animate_timer.stop()
 
     def showEvent(self, a0: QtGui.QShowEvent) -> None:
         if not a0.spontaneous():
@@ -1714,8 +1705,6 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
 
         self.image_delete_candidates.clear()
         self.current_pair = 0
-        # self.thumb_sheet.central_pixmap = 0
-        # self.thumb_sheet_scene.central_pixmap = 0
         self.toggle_filter_pairs()
         self.update_all_badges()
         self.reset_thumbs(True)
@@ -1798,7 +1787,6 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
 
     def reset_thumbs(self, button_id):
         if self.thumb_mode != self.mode_buttons.checkedId() or type(button_id) is bool:
-            # self.thumb_sheet.pixmaps = [None] * 15
             self.thumb_sheet_scene.update_all_thumbs()
         self.thumb_mode = self.mode_buttons.checkedId()
         border_color = QtCore.Qt.GlobalColor.white if self.thumb_mode == -2 else QtCore.Qt.GlobalColor.black 
@@ -1868,8 +1856,6 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
 
         work_record = distance_db.iloc[self.current_pair]
 
-        # size_comparison = (distance_db.size_compare_category.iloc[self.current_pair])
-        # crop_comparison = (distance_db.crop_compare_category.iloc[self.current_pair])
         size_comparison = work_record.size_compare_category
         crop_comparison = work_record.crop_compare_category
         if get_dominant_image(self.current_pair) == (idx == 0):
@@ -1888,8 +1874,6 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
         label.setText(text)
 
         color_category = self.get_delete_suggest(self.current_pair, True)[idx]
-        # if get_dominant_image(self.current_pair):
-        #     color_category *= -1
 
         color_template += (red_color, gray_color, green_color)[color_category + 1]
 
@@ -1964,28 +1948,12 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
             self.paint_sheet.pixmap_l = None
             self.paint_sheet.pixmap_r = None
             self.image_pixmaps = [QtGui.QPixmap] * 4
-            # for i in range(15):
-            #     self.thumb_sheet.pixmaps[i] = None
-            #     self.thumb_sheet.delete_marks[i] = None
-            #     self.thumb_sheet.suggest_marks[i] = None
-            #     # self.thumb_sheet_scene.pixmaps[i] = None
-            #     self.thumb_sheet_scene.delete_marks[i] = None
-            #     self.thumb_sheet_scene.suggest_marks[i] = None
             self.paint_sheet.update()
-            # self.thumb_sheet.update()
-            # self.thumb_sheet_scene.update()
             return
 
         self.current_pair += shift
         self.current_pair %= len(distance_db)
         self.thumb_sheet_scene.update_selection()
-        # one_step = -1 if shift < 0 else 1
-        # for i in range(abs(shift)):
-        #     self.thumb_sheet.central_pixmap = (self.thumb_sheet.central_pixmap + one_step) % 15
-        #     thumb_id = (self.thumb_sheet.central_pixmap + 7 * one_step) % 15
-        #     self.thumb_sheet.pixmaps[thumb_id] = None
-        #     self.thumb_sheet.delete_marks[thumb_id] = None
-        #     self.thumb_sheet.suggest_marks[thumb_id] = None
         self.update_all_badges()
 
         id_l, id_r = get_image_pair(self.current_pair)
@@ -2012,8 +1980,6 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
         self.paint_sheet.img_xy = QtCore.QPoint(0, 0)
         self.paint_sheet.img_xy = QtCore.QPoint(0, 0)
         self.paint_sheet.suggest_marks = self.get_delete_suggest(self.current_pair, True)
-        # self.thumb_sheet.update()
-        # self.thumb_sheet_scene.update()
 
         if self.draw_diff_mode:
             self.redraw_animation()
@@ -2022,37 +1988,6 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
             self.paint_sheet.pixmap_r = self.image_pixmaps[1]
 
             self.paint_sheet.update()
-            # self.preview_sheet.update()
-        # self.thumb_timer.start()
-
-    # def load_new_thumb(self):
-    #     if not self.isVisible():
-    #         self.thumb_timer.stop()
-    #         return
-        # for i in range(1, 2):
-        #     thumb_id = i // 2 if i % 2 else -i // 2
-        #     if self.generate_diff_thumb(thumb_id):
-        #         return
-
-    # def generate_diff_thumb(self, shift):
-    #     if not len(distance_db):
-    #         return
-    #     thumb_id = (self.thumb_sheet.central_pixmap + shift) % 15
-    #     if self.thumb_sheet.pixmaps[thumb_id]:
-    #         return
-    #     if thumb_id in self.thumb_sheet_scene.thumbs_items.keys():
-    #         return
-    #     work_pair = (self.current_pair + shift) % len(distance_db)
-    #     id_l, id_r = get_image_pair(work_pair)
-    #     image_l = load_image(image_DB.image_paths[id_l]).convert("RGB")
-    #     image_r = load_image(image_DB.image_paths[id_r]).convert("RGB")
-    #     image_d = self.generate_diff_image2(image_l, image_r, True, work_pair)
-
-    #     self.thumb_sheet.pixmaps[thumb_id] = pixmap_from_image(image_d)
-    #     self.thumb_sheet_scene.add_thumb_item(thumb_id, pixmap_from_image(image_d))
-    #     # self.update_preview_delete_marks(work_pair, thumb_id)
-    #     self.thumb_sheet.update()
-    #     return True
 
     def request_thumb(self, thumb_id):
         if thumb_id >= len(distance_db):
@@ -2068,25 +2003,9 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
         
         load_options = [im_l, im_r, crop_l, crop_r, thm_size, thumb_mode, thumb_colored, thumb_id]
         pool.apply_async(generate_thumb_pixmap, load_options, callback=recieve_loaded_thumb)
-        # print(f"Pair {thumb_id} stage **")
-
-    # def update_all_delete_marks(self):
-    #     if not len(distance_db):
-    #         return
-    #     for i in range(1, 16):
-    #         shift = i // 2 if i % 2 else -i // 2
-    #         thumb_id = (self.thumb_sheet.central_pixmap + shift) % 15
-    #         work_pair = (self.current_pair + shift) % len(distance_db)
-    #         self.update_preview_delete_marks(work_pair, thumb_id)
 
     def update_all_badges(self):
         self.thumb_sheet_scene.badges_version += 1
-        # for i in range(1, len(distance_db) * 2):
-        # for i in range(1, 100):
-        #     work_pair = self.current_pair - ((-i, i)[i % 2] // 2)
-        #     if work_pair not in range(1, len(distance_db)):
-        #         continue
-        #     self.update_single_thumb_badges(work_pair)
 
     def update_single_thumb_badges(self, work_pair):
         mark_left = distance_db.del_im_1.iloc[work_pair]
@@ -2100,37 +2019,6 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
             fatal_left, fatal_right = fatal_right, fatal_left
         suggest_left, suggest_right = self.get_delete_suggest(work_pair, True)
         self.thumb_sheet_scene.update_badges(work_pair, [suggest_left, suggest_right, fatal_left, fatal_right, mark_left, mark_right])
-
-
-    # def update_preview_delete_marks(self, work_pair, thumb_id):
-    #     id_l = distance_db.im_1.iloc[work_pair]
-    #     id_r = distance_db.im_2.iloc[work_pair]
-    #     mark_left = distance_db.del_im_1.iloc[work_pair]
-    #     mark_right = distance_db.del_im_2.iloc[work_pair]
-    #     if self.image_delete_candidates.get(id_l, None) and not mark_left:
-    #         mark_left = -2
-    #     if self.image_delete_candidates.get(id_r, None) and not mark_right:
-    #         mark_right = -2
-
-    #     if get_dominant_image(work_pair):
-    #         mark_left, mark_right = mark_right, mark_left
-        
-
-    #     self.thumb_sheet.delete_marks[thumb_id] = mark_right, mark_left
-
-    #     # if mark_left or mark_right:
-    #     #     self.thumb_sheet.delete_marks[thumb_id] = mark_left, mark_right
-    #     #     self.thumb_sheet_scene.delete_marks[thumb_id] = mark_left, mark_right
-    #     # else:
-    #     #     # self.thumb_sheet.delete_marks[thumb_id] = None
-    #     #     # self.thumb_sheet_scene.delete_marks[thumb_id] = None
-    #     #     self.thumb_sheet.delete_marks[thumb_id] = 0, 0
-    #     #     self.thumb_sheet_scene.delete_marks[thumb_id] = 0, 0
-
-    #     suggest_left, suggest_right = self.get_delete_suggest(work_pair, True)
-    #     self.thumb_sheet.suggest_marks[thumb_id] = suggest_left, suggest_right
-    #     # self.thumb_sheet_scene.suggest_marks[thumb_id] = suggest_left, suggest_right
-    #     self.thumb_sheet_scene.update_marks(work_pair, mark_left, mark_right, suggest_left, suggest_right)
 
     def get_delete_suggest(self, work_pair, check_flip=False):
         distance_db_row = distance_db.iloc[work_pair]
@@ -2263,7 +2151,7 @@ class VisImSorterGUI(QMainWindow, VisImSorterInterface.Ui_VisImSorter):
         create_samples_enabled = self.check_create_samples.isChecked()
         conf.enable_stage2_grouping = self.check_stage2_grouping.isChecked()
         conf.stage1_grouping_type = self.combo_stage1_grouping.currentIndex()
-        conf.enable_multiprocessing = self.check_multiprocessing.isChecked()
+        # conf.enable_multiprocessing = self.check_multiprocessing.isChecked()
         conf.search_duplicates = self.tab_unduplicate.isVisible()
         conf.compare_by_angles = self.btn_angles.isChecked()
         conf.compare_resort = self.btn_compare_resort.isChecked()
