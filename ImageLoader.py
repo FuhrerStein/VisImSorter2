@@ -96,18 +96,17 @@ def generate_image_vector(image_full_names, selected_color_bands: dict, hg_bands
 
 def generate_thumb_pixmap(im_l, im_r, crop_l_orig, crop_r_orig, thm_size, thumb_mode, thumb_colored, thumb_id):
 
-    def make_pixmap(img):
-        qimage_obj = QtGui.QImage(img.tobytes(), img.width, img.height, img.width * 3, QtGui.QImage.Format_RGB888)
-        pixmap_obj = QtGui.QPixmap(qimage_obj)
-        return pixmap_obj
+    # def make_pixmap(img):
+    #     qimage_obj = QtGui.QImage(img.tobytes(), img.width, img.height, img.width * 3, QtGui.QImage.Format_RGB888)
+    #     pixmap_obj = QtGui.QPixmap(qimage_obj)
+    #     return pixmap_obj
 
-    def make_qimage(img):
-        qimage_obj = QtGui.QImage(img.tobytes(), img.width, img.height, img.width * 3, QtGui.QImage.Format_RGB888)
-        return qimage_obj
+    # def make_qimage(img):
+    #     qimage_obj = QtGui.QImage(img.tobytes(), img.width, img.height, img.width * 3, QtGui.QImage.Format_RGB888)
+    #     return qimage_obj
 
     image_l = load_image(im_l).convert("RGB")
     image_r = load_image(im_r).convert("RGB")
-    # print(f"Pair {thumb_id} stage ***")
 
     if crop_l_orig is not None:
         cropped_size_l = [480 + crop_l_orig[0] + crop_l_orig[2], 480 + crop_l_orig[1] + crop_l_orig[3]]
@@ -144,12 +143,6 @@ def generate_thumb_pixmap(im_l, im_r, crop_l_orig, crop_r_orig, thm_size, thumb_
 
     if thumb_mode == -4:
         image_d = ImageOps.invert(image_d)
-    # img_pixmap = make_pixmap(image_d)
-    # qimg = make_qimage(image_d)
     print(f"Pair {thumb_id} stage ****")
-    # print(f"len(image_d): {len(image_d)}", f"{thumb_id}")
-    # return f"Pair {thumb_id} stage *****"
-    # return [thumb_id, 5]
-    # return [thumb_id, qimg]
     return thumb_id, image_d
 

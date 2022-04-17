@@ -618,6 +618,9 @@
           </item>
           <item>
            <widget class="QPushButton" name="push_show_size_and_crop">
+            <property name="enabled">
+             <bool>false</bool>
+            </property>
             <property name="sizePolicy">
              <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
               <horstretch>0</horstretch>
@@ -649,6 +652,9 @@
           </item>
           <item>
            <widget class="QPushButton" name="push_show_crop_only">
+            <property name="enabled">
+             <bool>false</bool>
+            </property>
             <property name="sizePolicy">
              <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
               <horstretch>0</horstretch>
@@ -714,6 +720,9 @@
           </item>
           <item>
            <widget class="QPushButton" name="push_show_mixed_only">
+            <property name="enabled">
+             <bool>false</bool>
+            </property>
             <property name="sizePolicy">
              <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
               <horstretch>0</horstretch>
@@ -1388,8 +1397,8 @@
  <resources/>
  <connections/>
  <buttongroups>
-  <buttongroup name="suggest_buttons"/>
-  <buttongroup name="mode_buttons"/>
   <buttongroup name="filter_buttons"/>
+  <buttongroup name="mode_buttons"/>
+  <buttongroup name="suggest_buttons"/>
  </buttongroups>
 </ui>
