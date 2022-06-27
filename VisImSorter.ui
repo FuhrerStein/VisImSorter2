@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>903</width>
-    <height>666</height>
+    <width>720</width>
+    <height>690</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -19,6 +19,87 @@
   <property name="palette">
    <palette>
     <active>
+     <colorrole role="WindowText">
+      <brush brushstyle="SolidPattern">
+       <color alpha="255">
+        <red>0</red>
+        <green>0</green>
+        <blue>0</blue>
+       </color>
+      </brush>
+     </colorrole>
+     <colorrole role="Button">
+      <brush brushstyle="SolidPattern">
+       <color alpha="255">
+        <red>171</red>
+        <green>171</green>
+        <blue>171</blue>
+       </color>
+      </brush>
+     </colorrole>
+     <colorrole role="Light">
+      <brush brushstyle="SolidPattern">
+       <color alpha="255">
+        <red>255</red>
+        <green>255</green>
+        <blue>255</blue>
+       </color>
+      </brush>
+     </colorrole>
+     <colorrole role="Midlight">
+      <brush brushstyle="SolidPattern">
+       <color alpha="255">
+        <red>213</red>
+        <green>213</green>
+        <blue>213</blue>
+       </color>
+      </brush>
+     </colorrole>
+     <colorrole role="Dark">
+      <brush brushstyle="SolidPattern">
+       <color alpha="255">
+        <red>85</red>
+        <green>85</green>
+        <blue>85</blue>
+       </color>
+      </brush>
+     </colorrole>
+     <colorrole role="Mid">
+      <brush brushstyle="SolidPattern">
+       <color alpha="255">
+        <red>114</red>
+        <green>114</green>
+        <blue>114</blue>
+       </color>
+      </brush>
+     </colorrole>
+     <colorrole role="Text">
+      <brush brushstyle="SolidPattern">
+       <color alpha="255">
+        <red>0</red>
+        <green>0</green>
+        <blue>0</blue>
+       </color>
+      </brush>
+     </colorrole>
+     <colorrole role="BrightText">
+      <brush brushstyle="SolidPattern">
+       <color alpha="255">
+        <red>255</red>
+        <green>255</green>
+        <blue>255</blue>
+       </color>
+      </brush>
+     </colorrole>
+     <colorrole role="ButtonText">
+      <brush brushstyle="SolidPattern">
+       <color alpha="255">
+        <red>0</red>
+        <green>0</green>
+        <blue>0</blue>
+       </color>
+      </brush>
+     </colorrole>
      <colorrole role="Base">
       <brush brushstyle="SolidPattern">
        <color alpha="255">
@@ -31,14 +112,140 @@
      <colorrole role="Window">
       <brush brushstyle="SolidPattern">
        <color alpha="255">
-        <red>192</red>
-        <green>192</green>
-        <blue>192</blue>
+        <red>171</red>
+        <green>171</green>
+        <blue>171</blue>
+       </color>
+      </brush>
+     </colorrole>
+     <colorrole role="Shadow">
+      <brush brushstyle="SolidPattern">
+       <color alpha="255">
+        <red>0</red>
+        <green>0</green>
+        <blue>0</blue>
+       </color>
+      </brush>
+     </colorrole>
+     <colorrole role="AlternateBase">
+      <brush brushstyle="SolidPattern">
+       <color alpha="255">
+        <red>213</red>
+        <green>213</green>
+        <blue>213</blue>
+       </color>
+      </brush>
+     </colorrole>
+     <colorrole role="ToolTipBase">
+      <brush brushstyle="SolidPattern">
+       <color alpha="255">
+        <red>255</red>
+        <green>255</green>
+        <blue>220</blue>
+       </color>
+      </brush>
+     </colorrole>
+     <colorrole role="ToolTipText">
+      <brush brushstyle="SolidPattern">
+       <color alpha="255">
+        <red>0</red>
+        <green>0</green>
+        <blue>0</blue>
+       </color>
+      </brush>
+     </colorrole>
+     <colorrole role="PlaceholderText">
+      <brush brushstyle="SolidPattern">
+       <color alpha="128">
+        <red>0</red>
+        <green>0</green>
+        <blue>0</blue>
        </color>
       </brush>
      </colorrole>
     </active>
     <inactive>
+     <colorrole role="WindowText">
+      <brush brushstyle="SolidPattern">
+       <color alpha="255">
+        <red>0</red>
+        <green>0</green>
+        <blue>0</blue>
+       </color>
+      </brush>
+     </colorrole>
+     <colorrole role="Button">
+      <brush brushstyle="SolidPattern">
+       <color alpha="255">
+        <red>171</red>
+        <green>171</green>
+        <blue>171</blue>
+       </color>
+      </brush>
+     </colorrole>
+     <colorrole role="Light">
+      <brush brushstyle="SolidPattern">
+       <color alpha="255">
+        <red>255</red>
+        <green>255</green>
+        <blue>255</blue>
+       </color>
+      </brush>
+     </colorrole>
+     <colorrole role="Midlight">
+      <brush brushstyle="SolidPattern">
+       <color alpha="255">
+        <red>213</red>
+        <green>213</green>
+        <blue>213</blue>
+       </color>
+      </brush>
+     </colorrole>
+     <colorrole role="Dark">
+      <brush brushstyle="SolidPattern">
+       <color alpha="255">
+        <red>85</red>
+        <green>85</green>
+        <blue>85</blue>
+       </color>
+      </brush>
+     </colorrole>
+     <colorrole role="Mid">
+      <brush brushstyle="SolidPattern">
+       <color alpha="255">
+        <red>114</red>
+        <green>114</green>
+        <blue>114</blue>
+       </color>
+      </brush>
+     </colorrole>
+     <colorrole role="Text">
+      <brush brushstyle="SolidPattern">
+       <color alpha="255">
+        <red>0</red>
+        <green>0</green>
+        <blue>0</blue>
+       </color>
+      </brush>
+     </colorrole>
+     <colorrole role="BrightText">
+      <brush brushstyle="SolidPattern">
+       <color alpha="255">
+        <red>255</red>
+        <green>255</green>
+        <blue>255</blue>
+       </color>
+      </brush>
+     </colorrole>
+     <colorrole role="ButtonText">
+      <brush brushstyle="SolidPattern">
+       <color alpha="255">
+        <red>0</red>
+        <green>0</green>
+        <blue>0</blue>
+       </color>
+      </brush>
+     </colorrole>
      <colorrole role="Base">
       <brush brushstyle="SolidPattern">
        <color alpha="255">
@@ -51,29 +258,200 @@
      <colorrole role="Window">
       <brush brushstyle="SolidPattern">
        <color alpha="255">
-        <red>192</red>
-        <green>192</green>
-        <blue>192</blue>
+        <red>171</red>
+        <green>171</green>
+        <blue>171</blue>
+       </color>
+      </brush>
+     </colorrole>
+     <colorrole role="Shadow">
+      <brush brushstyle="SolidPattern">
+       <color alpha="255">
+        <red>0</red>
+        <green>0</green>
+        <blue>0</blue>
+       </color>
+      </brush>
+     </colorrole>
+     <colorrole role="AlternateBase">
+      <brush brushstyle="SolidPattern">
+       <color alpha="255">
+        <red>213</red>
+        <green>213</green>
+        <blue>213</blue>
+       </color>
+      </brush>
+     </colorrole>
+     <colorrole role="ToolTipBase">
+      <brush brushstyle="SolidPattern">
+       <color alpha="255">
+        <red>255</red>
+        <green>255</green>
+        <blue>220</blue>
+       </color>
+      </brush>
+     </colorrole>
+     <colorrole role="ToolTipText">
+      <brush brushstyle="SolidPattern">
+       <color alpha="255">
+        <red>0</red>
+        <green>0</green>
+        <blue>0</blue>
+       </color>
+      </brush>
+     </colorrole>
+     <colorrole role="PlaceholderText">
+      <brush brushstyle="SolidPattern">
+       <color alpha="128">
+        <red>0</red>
+        <green>0</green>
+        <blue>0</blue>
        </color>
       </brush>
      </colorrole>
     </inactive>
     <disabled>
+     <colorrole role="WindowText">
+      <brush brushstyle="SolidPattern">
+       <color alpha="255">
+        <red>85</red>
+        <green>85</green>
+        <blue>85</blue>
+       </color>
+      </brush>
+     </colorrole>
+     <colorrole role="Button">
+      <brush brushstyle="SolidPattern">
+       <color alpha="255">
+        <red>171</red>
+        <green>171</green>
+        <blue>171</blue>
+       </color>
+      </brush>
+     </colorrole>
+     <colorrole role="Light">
+      <brush brushstyle="SolidPattern">
+       <color alpha="255">
+        <red>255</red>
+        <green>255</green>
+        <blue>255</blue>
+       </color>
+      </brush>
+     </colorrole>
+     <colorrole role="Midlight">
+      <brush brushstyle="SolidPattern">
+       <color alpha="255">
+        <red>213</red>
+        <green>213</green>
+        <blue>213</blue>
+       </color>
+      </brush>
+     </colorrole>
+     <colorrole role="Dark">
+      <brush brushstyle="SolidPattern">
+       <color alpha="255">
+        <red>85</red>
+        <green>85</green>
+        <blue>85</blue>
+       </color>
+      </brush>
+     </colorrole>
+     <colorrole role="Mid">
+      <brush brushstyle="SolidPattern">
+       <color alpha="255">
+        <red>114</red>
+        <green>114</green>
+        <blue>114</blue>
+       </color>
+      </brush>
+     </colorrole>
+     <colorrole role="Text">
+      <brush brushstyle="SolidPattern">
+       <color alpha="255">
+        <red>85</red>
+        <green>85</green>
+        <blue>85</blue>
+       </color>
+      </brush>
+     </colorrole>
+     <colorrole role="BrightText">
+      <brush brushstyle="SolidPattern">
+       <color alpha="255">
+        <red>255</red>
+        <green>255</green>
+        <blue>255</blue>
+       </color>
+      </brush>
+     </colorrole>
+     <colorrole role="ButtonText">
+      <brush brushstyle="SolidPattern">
+       <color alpha="255">
+        <red>85</red>
+        <green>85</green>
+        <blue>85</blue>
+       </color>
+      </brush>
+     </colorrole>
      <colorrole role="Base">
       <brush brushstyle="SolidPattern">
        <color alpha="255">
-        <red>192</red>
-        <green>192</green>
-        <blue>192</blue>
+        <red>171</red>
+        <green>171</green>
+        <blue>171</blue>
        </color>
       </brush>
      </colorrole>
      <colorrole role="Window">
       <brush brushstyle="SolidPattern">
        <color alpha="255">
-        <red>192</red>
-        <green>192</green>
-        <blue>192</blue>
+        <red>171</red>
+        <green>171</green>
+        <blue>171</blue>
+       </color>
+      </brush>
+     </colorrole>
+     <colorrole role="Shadow">
+      <brush brushstyle="SolidPattern">
+       <color alpha="255">
+        <red>0</red>
+        <green>0</green>
+        <blue>0</blue>
+       </color>
+      </brush>
+     </colorrole>
+     <colorrole role="AlternateBase">
+      <brush brushstyle="SolidPattern">
+       <color alpha="255">
+        <red>171</red>
+        <green>171</green>
+        <blue>171</blue>
+       </color>
+      </brush>
+     </colorrole>
+     <colorrole role="ToolTipBase">
+      <brush brushstyle="SolidPattern">
+       <color alpha="255">
+        <red>255</red>
+        <green>255</green>
+        <blue>220</blue>
+       </color>
+      </brush>
+     </colorrole>
+     <colorrole role="ToolTipText">
+      <brush brushstyle="SolidPattern">
+       <color alpha="255">
+        <red>0</red>
+        <green>0</green>
+        <blue>0</blue>
+       </color>
+      </brush>
+     </colorrole>
+     <colorrole role="PlaceholderText">
+      <brush brushstyle="SolidPattern">
+       <color alpha="128">
+        <red>0</red>
+        <green>0</green>
+        <blue>0</blue>
        </color>
       </brush>
      </colorrole>
@@ -92,1261 +470,638 @@
    <locale language="English" country="UnitedStates"/>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <layout class="QGridLayout" name="gridLayout">
-    <item row="1" column="1" rowspan="3">
-     <widget class="QGroupBox" name="group_analyze">
-      <property name="sizePolicy">
-       <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
-        <horstretch>0</horstretch>
-        <verstretch>0</verstretch>
-       </sizepolicy>
-      </property>
-      <property name="title">
-       <string>Analisys depth</string>
-      </property>
-      <layout class="QVBoxLayout" name="verticalLayout_2">
-       <item>
-        <widget class="QGroupBox" name="groupBox_4">
-         <property name="title">
-          <string>Histogram bands</string>
-         </property>
-         <layout class="QHBoxLayout" name="horizontalLayout_3">
-          <item>
-           <widget class="QSlider" name="slider_histogram_bands">
-            <property name="minimum">
-             <number>2</number>
-            </property>
-            <property name="maximum">
-             <number>100</number>
-            </property>
-            <property name="pageStep">
-             <number>2</number>
-            </property>
-            <property name="value">
-             <number>10</number>
-            </property>
-            <property name="orientation">
-             <enum>Qt::Horizontal</enum>
-            </property>
-            <property name="invertedAppearance">
-             <bool>false</bool>
-            </property>
-            <property name="invertedControls">
-             <bool>false</bool>
-            </property>
-            <property name="tickPosition">
-             <enum>QSlider::TicksAbove</enum>
-            </property>
-            <property name="tickInterval">
-             <number>10</number>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QLabel" name="lbl_histogram_bands">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
-              <horstretch>162</horstretch>
-              <verstretch>95</verstretch>
-             </sizepolicy>
-            </property>
-            <property name="minimumSize">
-             <size>
-              <width>60</width>
-              <height>0</height>
-             </size>
-            </property>
-            <property name="layoutDirection">
-             <enum>Qt::LeftToRight</enum>
-            </property>
-            <property name="text">
-             <string>5</string>
-            </property>
-            <property name="alignment">
-             <set>Qt::AlignCenter</set>
-            </property>
-           </widget>
-          </item>
-         </layout>
-        </widget>
-       </item>
-       <item>
-        <widget class="QGroupBox" name="group_colorspaces_all">
+   <layout class="QVBoxLayout" name="verticalLayout_10">
+    <property name="spacing">
+     <number>0</number>
+    </property>
+    <item>
+     <layout class="QHBoxLayout" name="horizontalLayout_2">
+      <item>
+       <widget class="QTabWidget" name="tabWidget">
+        <property name="enabled">
+         <bool>true</bool>
+        </property>
+        <property name="autoFillBackground">
+         <bool>true</bool>
+        </property>
+        <property name="currentIndex">
+         <number>1</number>
+        </property>
+        <widget class="QWidget" name="tab_unduplicate">
          <property name="sizePolicy">
-          <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
+          <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
            <horstretch>0</horstretch>
            <verstretch>0</verstretch>
           </sizepolicy>
          </property>
-         <property name="title">
-          <string>Use colorspaces</string>
+         <property name="minimumSize">
+          <size>
+           <width>370</width>
+           <height>0</height>
+          </size>
          </property>
-         <layout class="QHBoxLayout" name="horizontalLayout_7">
-          <property name="spacing">
-           <number>4</number>
-          </property>
-          <property name="sizeConstraint">
-           <enum>QLayout::SetDefaultConstraint</enum>
-          </property>
-          <property name="leftMargin">
-           <number>3</number>
-          </property>
-          <property name="topMargin">
-           <number>3</number>
-          </property>
-          <property name="rightMargin">
-           <number>3</number>
-          </property>
-          <property name="bottomMargin">
-           <number>3</number>
-          </property>
+         <property name="autoFillBackground">
+          <bool>true</bool>
+         </property>
+         <attribute name="title">
+          <string>UnDuplicate</string>
+         </attribute>
+         <layout class="QVBoxLayout" name="verticalLayout_8">
           <item>
-           <widget class="QListWidget" name="list_color_spaces">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Expanding" vsizetype="Minimum">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
+           <widget class="QGroupBox" name="groupBox_7">
+            <property name="title">
+             <string>Result pairs count</string>
             </property>
-            <property name="minimumSize">
-             <size>
-              <width>70</width>
-              <height>130</height>
-             </size>
-            </property>
-            <property name="maximumSize">
-             <size>
-              <width>90</width>
-              <height>130</height>
-             </size>
-            </property>
-            <property name="frameShape">
-             <enum>QFrame::StyledPanel</enum>
-            </property>
-            <property name="frameShadow">
-             <enum>QFrame::Plain</enum>
-            </property>
-            <property name="lineWidth">
-             <number>3</number>
-            </property>
-            <property name="midLineWidth">
-             <number>2</number>
-            </property>
-            <property name="verticalScrollBarPolicy">
-             <enum>Qt::ScrollBarAlwaysOff</enum>
-            </property>
-            <property name="autoScrollMargin">
-             <number>12</number>
-            </property>
-            <property name="editTriggers">
-             <set>QAbstractItemView::NoEditTriggers</set>
-            </property>
-            <property name="showDropIndicator" stdset="0">
-             <bool>false</bool>
-            </property>
-            <property name="alternatingRowColors">
-             <bool>false</bool>
-            </property>
-            <property name="selectionMode">
-             <enum>QAbstractItemView::MultiSelection</enum>
-            </property>
-            <property name="textElideMode">
-             <enum>Qt::ElideMiddle</enum>
-            </property>
-            <property name="layoutMode">
-             <enum>QListView::SinglePass</enum>
-            </property>
-            <property name="spacing">
-             <number>1</number>
-            </property>
-            <property name="viewMode">
-             <enum>QListView::ListMode</enum>
-            </property>
-            <property name="modelColumn">
-             <number>0</number>
-            </property>
-            <property name="currentRow">
-             <number>1</number>
-            </property>
-            <property name="sortingEnabled">
-             <bool>false</bool>
-            </property>
-            <item>
-             <property name="text">
-              <string notr="true">HSV</string>
-             </property>
-             <property name="textAlignment">
-              <set>AlignCenter</set>
-             </property>
-             <property name="flags">
-              <set>ItemIsSelectable|ItemIsEnabled</set>
-             </property>
-            </item>
-            <item>
-             <property name="text">
-              <string notr="true">RGB</string>
-             </property>
-             <property name="textAlignment">
-              <set>AlignCenter</set>
-             </property>
-             <property name="flags">
-              <set>ItemIsSelectable|ItemIsEnabled</set>
-             </property>
-            </item>
-            <item>
-             <property name="text">
-              <string notr="true">CMYK</string>
-             </property>
-             <property name="textAlignment">
-              <set>AlignCenter</set>
-             </property>
-             <property name="flags">
-              <set>ItemIsSelectable|ItemIsEnabled</set>
-             </property>
-            </item>
-            <item>
-             <property name="text">
-              <string notr="true">YCbCr</string>
-             </property>
-             <property name="textAlignment">
-              <set>AlignCenter</set>
-             </property>
-             <property name="flags">
-              <set>ItemIsSelectable|ItemIsEnabled</set>
-             </property>
-            </item>
+            <layout class="QHBoxLayout" name="horizontalLayout_11">
+             <item>
+              <widget class="QSlider" name="slider_max_pairs">
+               <property name="minimum">
+                <number>1</number>
+               </property>
+               <property name="maximum">
+                <number>200</number>
+               </property>
+               <property name="value">
+                <number>100</number>
+               </property>
+               <property name="orientation">
+                <enum>Qt::Horizontal</enum>
+               </property>
+               <property name="invertedAppearance">
+                <bool>false</bool>
+               </property>
+               <property name="invertedControls">
+                <bool>false</bool>
+               </property>
+               <property name="tickPosition">
+                <enum>QSlider::TicksAbove</enum>
+               </property>
+               <property name="tickInterval">
+                <number>10</number>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QLabel" name="lbl_max_pairs">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
+                 <horstretch>162</horstretch>
+                 <verstretch>95</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="minimumSize">
+                <size>
+                 <width>60</width>
+                 <height>0</height>
+                </size>
+               </property>
+               <property name="layoutDirection">
+                <enum>Qt::LeftToRight</enum>
+               </property>
+               <property name="text">
+                <string>5</string>
+               </property>
+               <property name="alignment">
+                <set>Qt::AlignCenter</set>
+               </property>
+              </widget>
+             </item>
+            </layout>
            </widget>
           </item>
           <item>
-           <widget class="QListWidget" name="list_color_spaces_HSV">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
+           <widget class="QCheckBox" name="btn_compare_resort">
+            <property name="text">
+             <string>Do resort after search</string>
             </property>
-            <property name="minimumSize">
-             <size>
-              <width>30</width>
-              <height>95</height>
-             </size>
+            <property name="checkable">
+             <bool>true</bool>
             </property>
-            <property name="maximumSize">
-             <size>
-              <width>50</width>
-              <height>130</height>
-             </size>
-            </property>
-            <property name="frameShape">
-             <enum>QFrame::StyledPanel</enum>
-            </property>
-            <property name="frameShadow">
-             <enum>QFrame::Plain</enum>
-            </property>
-            <property name="lineWidth">
-             <number>3</number>
-            </property>
-            <property name="midLineWidth">
-             <number>2</number>
-            </property>
-            <property name="verticalScrollBarPolicy">
-             <enum>Qt::ScrollBarAlwaysOff</enum>
-            </property>
-            <property name="editTriggers">
-             <set>QAbstractItemView::NoEditTriggers</set>
-            </property>
-            <property name="showDropIndicator" stdset="0">
+            <property name="checked">
              <bool>false</bool>
             </property>
-            <property name="alternatingRowColors">
-             <bool>false</bool>
-            </property>
-            <property name="selectionMode">
-             <enum>QAbstractItemView::MultiSelection</enum>
-            </property>
-            <property name="layoutMode">
-             <enum>QListView::SinglePass</enum>
-            </property>
-            <property name="spacing">
-             <number>1</number>
-            </property>
-            <property name="modelColumn">
-             <number>0</number>
-            </property>
-            <item>
-             <property name="text">
-              <string notr="true">H</string>
-             </property>
-             <property name="textAlignment">
-              <set>AlignCenter</set>
-             </property>
-             <property name="flags">
-              <set>ItemIsSelectable|ItemIsEnabled</set>
-             </property>
-            </item>
-            <item>
-             <property name="text">
-              <string notr="true">S</string>
-             </property>
-             <property name="textAlignment">
-              <set>AlignCenter</set>
-             </property>
-             <property name="flags">
-              <set>ItemIsSelectable|ItemIsEnabled</set>
-             </property>
-            </item>
-            <item>
-             <property name="text">
-              <string notr="true">V</string>
-             </property>
-             <property name="textAlignment">
-              <set>AlignCenter</set>
-             </property>
-             <property name="flags">
-              <set>ItemIsSelectable|ItemIsEnabled</set>
-             </property>
-            </item>
            </widget>
           </item>
           <item>
-           <widget class="QListWidget" name="list_color_spaces_RGB">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
+           <widget class="QCheckBox" name="check_two_image_sets">
+            <property name="text">
+             <string>Two image sets to compare between</string>
             </property>
-            <property name="minimumSize">
-             <size>
-              <width>30</width>
-              <height>95</height>
-             </size>
+            <property name="checkable">
+             <bool>true</bool>
             </property>
-            <property name="maximumSize">
-             <size>
-              <width>35</width>
-              <height>130</height>
-             </size>
-            </property>
-            <property name="frameShape">
-             <enum>QFrame::StyledPanel</enum>
-            </property>
-            <property name="frameShadow">
-             <enum>QFrame::Plain</enum>
-            </property>
-            <property name="lineWidth">
-             <number>3</number>
-            </property>
-            <property name="midLineWidth">
-             <number>2</number>
-            </property>
-            <property name="verticalScrollBarPolicy">
-             <enum>Qt::ScrollBarAlwaysOff</enum>
-            </property>
-            <property name="editTriggers">
-             <set>QAbstractItemView::NoEditTriggers</set>
-            </property>
-            <property name="showDropIndicator" stdset="0">
+            <property name="checked">
              <bool>false</bool>
             </property>
-            <property name="alternatingRowColors">
-             <bool>false</bool>
-            </property>
-            <property name="selectionMode">
-             <enum>QAbstractItemView::MultiSelection</enum>
-            </property>
-            <property name="layoutMode">
-             <enum>QListView::SinglePass</enum>
-            </property>
-            <property name="spacing">
-             <number>1</number>
-            </property>
-            <property name="modelColumn">
-             <number>0</number>
-            </property>
-            <property name="currentRow">
-             <number>-1</number>
-            </property>
-            <item>
-             <property name="text">
-              <string notr="true">R</string>
-             </property>
-             <property name="textAlignment">
-              <set>AlignCenter</set>
-             </property>
-             <property name="flags">
-              <set>ItemIsSelectable|ItemIsEnabled</set>
-             </property>
-            </item>
-            <item>
-             <property name="text">
-              <string notr="true">G</string>
-             </property>
-             <property name="textAlignment">
-              <set>AlignCenter</set>
-             </property>
-             <property name="flags">
-              <set>ItemIsSelectable|ItemIsEnabled</set>
-             </property>
-            </item>
-            <item>
-             <property name="text">
-              <string notr="true">B</string>
-             </property>
-             <property name="textAlignment">
-              <set>AlignCenter</set>
-             </property>
-             <property name="flags">
-              <set>ItemIsSelectable|ItemIsEnabled</set>
-             </property>
-            </item>
            </widget>
           </item>
           <item>
-           <widget class="QListWidget" name="list_color_spaces_CMYK">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
+           <spacer name="verticalSpacer">
+            <property name="orientation">
+             <enum>Qt::Vertical</enum>
             </property>
-            <property name="minimumSize">
+            <property name="sizeHint" stdset="0">
              <size>
-              <width>30</width>
-              <height>95</height>
+              <width>20</width>
+              <height>40</height>
              </size>
             </property>
-            <property name="maximumSize">
-             <size>
-              <width>35</width>
-              <height>130</height>
-             </size>
-            </property>
-            <property name="frameShape">
-             <enum>QFrame::StyledPanel</enum>
-            </property>
-            <property name="frameShadow">
-             <enum>QFrame::Plain</enum>
-            </property>
-            <property name="lineWidth">
-             <number>3</number>
-            </property>
-            <property name="midLineWidth">
-             <number>2</number>
-            </property>
-            <property name="verticalScrollBarPolicy">
-             <enum>Qt::ScrollBarAlwaysOff</enum>
-            </property>
-            <property name="editTriggers">
-             <set>QAbstractItemView::NoEditTriggers</set>
-            </property>
-            <property name="showDropIndicator" stdset="0">
-             <bool>false</bool>
-            </property>
-            <property name="alternatingRowColors">
-             <bool>false</bool>
-            </property>
-            <property name="selectionMode">
-             <enum>QAbstractItemView::MultiSelection</enum>
-            </property>
-            <property name="layoutMode">
-             <enum>QListView::SinglePass</enum>
-            </property>
-            <property name="spacing">
-             <number>1</number>
-            </property>
-            <property name="modelColumn">
-             <number>0</number>
-            </property>
-            <property name="currentRow">
-             <number>-1</number>
-            </property>
-            <item>
-             <property name="text">
-              <string notr="true">C</string>
-             </property>
-             <property name="textAlignment">
-              <set>AlignCenter</set>
-             </property>
-             <property name="flags">
-              <set>ItemIsSelectable|ItemIsEnabled</set>
-             </property>
-            </item>
-            <item>
-             <property name="text">
-              <string notr="true">M</string>
-             </property>
-             <property name="textAlignment">
-              <set>AlignCenter</set>
-             </property>
-             <property name="flags">
-              <set>ItemIsSelectable|ItemIsEnabled</set>
-             </property>
-            </item>
-            <item>
-             <property name="text">
-              <string notr="true">Y</string>
-             </property>
-             <property name="textAlignment">
-              <set>AlignCenter</set>
-             </property>
-             <property name="flags">
-              <set>ItemIsSelectable|ItemIsEnabled</set>
-             </property>
-            </item>
-           </widget>
-          </item>
-          <item>
-           <widget class="QListWidget" name="list_color_spaces_YCbCr">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
-            </property>
-            <property name="minimumSize">
-             <size>
-              <width>35</width>
-              <height>95</height>
-             </size>
-            </property>
-            <property name="maximumSize">
-             <size>
-              <width>35</width>
-              <height>130</height>
-             </size>
-            </property>
-            <property name="frameShape">
-             <enum>QFrame::StyledPanel</enum>
-            </property>
-            <property name="frameShadow">
-             <enum>QFrame::Plain</enum>
-            </property>
-            <property name="lineWidth">
-             <number>3</number>
-            </property>
-            <property name="midLineWidth">
-             <number>2</number>
-            </property>
-            <property name="verticalScrollBarPolicy">
-             <enum>Qt::ScrollBarAlwaysOff</enum>
-            </property>
-            <property name="editTriggers">
-             <set>QAbstractItemView::NoEditTriggers</set>
-            </property>
-            <property name="showDropIndicator" stdset="0">
-             <bool>false</bool>
-            </property>
-            <property name="alternatingRowColors">
-             <bool>false</bool>
-            </property>
-            <property name="selectionMode">
-             <enum>QAbstractItemView::MultiSelection</enum>
-            </property>
-            <property name="layoutMode">
-             <enum>QListView::SinglePass</enum>
-            </property>
-            <property name="spacing">
-             <number>1</number>
-            </property>
-            <property name="modelColumn">
-             <number>0</number>
-            </property>
-            <property name="currentRow">
-             <number>-1</number>
-            </property>
-            <item>
-             <property name="text">
-              <string notr="true">Y</string>
-             </property>
-             <property name="textAlignment">
-              <set>AlignCenter</set>
-             </property>
-             <property name="flags">
-              <set>ItemIsSelectable|ItemIsEnabled</set>
-             </property>
-            </item>
-            <item>
-             <property name="text">
-              <string notr="true">Cb</string>
-             </property>
-             <property name="textAlignment">
-              <set>AlignCenter</set>
-             </property>
-             <property name="flags">
-              <set>ItemIsSelectable|ItemIsEnabled</set>
-             </property>
-            </item>
-            <item>
-             <property name="text">
-              <string notr="true">Cr</string>
-             </property>
-             <property name="textAlignment">
-              <set>AlignCenter</set>
-             </property>
-             <property name="flags">
-              <set>ItemIsSelectable|ItemIsEnabled</set>
-             </property>
-            </item>
-           </widget>
+           </spacer>
           </item>
          </layout>
         </widget>
-       </item>
-      </layout>
-     </widget>
-    </item>
-    <item row="2" column="2">
-     <widget class="QGroupBox" name="group_move">
-      <property name="title">
-       <string>File operation</string>
-      </property>
-      <layout class="QHBoxLayout" name="horizontalLayout_2">
-       <item>
-        <widget class="QRadioButton" name="radio_copy">
-         <property name="text">
-          <string>Copy</string>
-         </property>
-         <property name="checked">
-          <bool>false</bool>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QRadioButton" name="radio_move">
-         <property name="text">
-          <string>Move</string>
-         </property>
-         <property name="checked">
+        <widget class="QWidget" name="tab_grouping">
+         <property name="enabled">
           <bool>true</bool>
          </property>
-        </widget>
-       </item>
-      </layout>
-     </widget>
-    </item>
-    <item row="0" column="1" colspan="2">
-     <widget class="QGroupBox" name="group_input">
-      <property name="sizePolicy">
-       <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-        <horstretch>0</horstretch>
-        <verstretch>0</verstretch>
-       </sizepolicy>
-      </property>
-      <property name="title">
-       <string>Input</string>
-      </property>
-      <property name="alignment">
-       <set>Qt::AlignJustify|Qt::AlignVCenter</set>
-      </property>
-      <layout class="QFormLayout" name="formLayout">
-       <item row="3" column="1">
-        <widget class="QCheckBox" name="check_multiprocessing">
-         <property name="text">
-          <string>Use multiprocessing for speed</string>
+         <property name="accessibleName">
+          <string/>
          </property>
-         <property name="checked">
+         <property name="autoFillBackground">
           <bool>true</bool>
          </property>
-        </widget>
-       </item>
-       <item row="3" column="0">
-        <widget class="QCheckBox" name="check_subdirs_box">
-         <property name="text">
-          <string>Search subdirectories</string>
-         </property>
-         <property name="checked">
-          <bool>true</bool>
-         </property>
-        </widget>
-       </item>
-       <item row="0" column="0" colspan="2">
-        <widget class="QPushButton" name="select_folder_button">
-         <property name="sizePolicy">
-          <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
-           <horstretch>0</horstretch>
-           <verstretch>255</verstretch>
-          </sizepolicy>
-         </property>
-         <property name="minimumSize">
-          <size>
-           <width>0</width>
-           <height>60</height>
-          </size>
-         </property>
-         <property name="maximumSize">
-          <size>
-           <width>1000</width>
-           <height>16777215</height>
-          </size>
-         </property>
-         <property name="acceptDrops">
-          <bool>true</bool>
-         </property>
-         <property name="text">
-          <string>Select folder</string>
-         </property>
-        </widget>
-       </item>
-      </layout>
-     </widget>
-    </item>
-    <item row="3" column="2">
-     <widget class="QGroupBox" name="groupBox_5">
-      <property name="title">
-       <string>Sort final folders by</string>
-      </property>
-      <layout class="QVBoxLayout" name="verticalLayout_4">
-       <item>
-        <widget class="QComboBox" name="combo_final_sort">
-         <property name="currentIndex">
-          <number>1</number>
-         </property>
-         <item>
-          <property name="text">
-           <string>Average color</string>
+         <attribute name="title">
+          <string>Grouping images</string>
+         </attribute>
+         <layout class="QVBoxLayout" name="verticalLayout_7">
+          <property name="spacing">
+           <number>4</number>
           </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>File count (ascending)</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>File count (descending)</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>Average brightness</string>
-          </property>
-         </item>
-        </widget>
-       </item>
-      </layout>
-     </widget>
-    </item>
-    <item row="1" column="2">
-     <widget class="QGroupBox" name="group_final">
-      <property name="title">
-       <string>After grouping done</string>
-      </property>
-      <layout class="QVBoxLayout" name="verticalLayout_3">
-       <item>
-        <widget class="QCheckBox" name="check_show_histograms">
-         <property name="text">
-          <string>Show histograms</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QCheckBox" name="check_export_histograms">
-         <property name="text">
-          <string>Export histograms</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QCheckBox" name="check_create_samples">
-         <property name="text">
-          <string>Create sample
-folder images</string>
-         </property>
-         <property name="checked">
-          <bool>false</bool>
-         </property>
-        </widget>
-       </item>
-      </layout>
-     </widget>
-    </item>
-    <item row="0" column="0" rowspan="4">
-     <widget class="QTabWidget" name="tabWidget">
-      <property name="enabled">
-       <bool>true</bool>
-      </property>
-      <property name="currentIndex">
-       <number>0</number>
-      </property>
-      <widget class="QWidget" name="tab_unduplicate">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-       <property name="minimumSize">
-        <size>
-         <width>370</width>
-         <height>0</height>
-        </size>
-       </property>
-       <attribute name="title">
-        <string>UnDuplicate</string>
-       </attribute>
-       <widget class="QGroupBox" name="groupBox_5">
-        <property name="geometry">
-         <rect>
-          <x>10</x>
-          <y>10</y>
-          <width>351</width>
-          <height>121</height>
-         </rect>
-        </property>
-        <layout class="QVBoxLayout" name="verticalLayout_6">
-         <item>
-          <widget class="QFrame" name="frame_4">
-           <property name="frameShape">
-            <enum>QFrame::StyledPanel</enum>
-           </property>
-           <property name="frameShadow">
-            <enum>QFrame::Raised</enum>
-           </property>
-           <layout class="QHBoxLayout" name="horizontalLayout_5">
-            <item>
-             <widget class="QSlider" name="slider_image_split_steps">
-              <property name="minimum">
-               <number>0</number>
-              </property>
-              <property name="maximum">
-               <number>13</number>
-              </property>
-              <property name="pageStep">
-               <number>1</number>
-              </property>
-              <property name="value">
-               <number>1</number>
-              </property>
-              <property name="orientation">
-               <enum>Qt::Horizontal</enum>
-              </property>
-              <property name="invertedAppearance">
-               <bool>false</bool>
-              </property>
-              <property name="invertedControls">
-               <bool>false</bool>
-              </property>
-              <property name="tickPosition">
-               <enum>QSlider::TicksAbove</enum>
-              </property>
-              <property name="tickInterval">
-               <number>1</number>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QLabel" name="lbl_image_split_steps">
-              <property name="sizePolicy">
-               <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
-                <horstretch>162</horstretch>
-                <verstretch>95</verstretch>
-               </sizepolicy>
-              </property>
-              <property name="minimumSize">
-               <size>
-                <width>60</width>
-                <height>0</height>
-               </size>
-              </property>
-              <property name="layoutDirection">
-               <enum>Qt::LeftToRight</enum>
-              </property>
-              <property name="text">
-               <string>5</string>
-              </property>
-              <property name="alignment">
-               <set>Qt::AlignCenter</set>
-              </property>
-             </widget>
-            </item>
-           </layout>
-          </widget>
-         </item>
-         <item>
-          <widget class="QLabel" name="label_2">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
-           <property name="text">
-            <string>How many pieces to split image to before analizyng each piece</string>
-           </property>
-           <property name="alignment">
-            <set>Qt::AlignCenter</set>
-           </property>
-           <property name="wordWrap">
-            <bool>true</bool>
-           </property>
-          </widget>
-         </item>
-        </layout>
-       </widget>
-       <widget class="QGroupBox" name="groupBox_7">
-        <property name="geometry">
-         <rect>
-          <x>10</x>
-          <y>230</y>
-          <width>351</width>
-          <height>70</height>
-         </rect>
-        </property>
-        <property name="title">
-         <string>Limit end result to best pairs</string>
-        </property>
-        <layout class="QHBoxLayout" name="horizontalLayout_11">
-         <item>
-          <widget class="QSlider" name="slider_max_pairs">
-           <property name="minimum">
-            <number>1</number>
-           </property>
-           <property name="maximum">
-            <number>200</number>
-           </property>
-           <property name="value">
-            <number>100</number>
-           </property>
-           <property name="orientation">
-            <enum>Qt::Horizontal</enum>
-           </property>
-           <property name="invertedAppearance">
-            <bool>false</bool>
-           </property>
-           <property name="invertedControls">
-            <bool>false</bool>
-           </property>
-           <property name="tickPosition">
-            <enum>QSlider::TicksAbove</enum>
-           </property>
-           <property name="tickInterval">
-            <number>10</number>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QLabel" name="lbl_max_pairs">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
-             <horstretch>162</horstretch>
-             <verstretch>95</verstretch>
-            </sizepolicy>
-           </property>
-           <property name="minimumSize">
-            <size>
-             <width>60</width>
-             <height>0</height>
-            </size>
-           </property>
-           <property name="layoutDirection">
-            <enum>Qt::LeftToRight</enum>
-           </property>
-           <property name="text">
-            <string>5</string>
-           </property>
-           <property name="alignment">
-            <set>Qt::AlignCenter</set>
-           </property>
-          </widget>
-         </item>
-        </layout>
-       </widget>
-       <widget class="QGroupBox" name="groupBox_9">
-        <property name="geometry">
-         <rect>
-          <x>10</x>
-          <y>130</y>
-          <width>351</width>
-          <height>81</height>
-         </rect>
-        </property>
-        <property name="title">
-         <string>Compare image vectors by</string>
-        </property>
-        <layout class="QHBoxLayout" name="horizontalLayout_8">
-         <item>
-          <widget class="QPushButton" name="btn_angles">
-           <property name="text">
-            <string>Angles</string>
-           </property>
-           <property name="checkable">
-            <bool>true</bool>
-           </property>
-           <property name="checked">
-            <bool>true</bool>
-           </property>
-           <property name="flat">
-            <bool>true</bool>
-           </property>
-           <attribute name="buttonGroup">
-            <string notr="true">buttonGroup</string>
-           </attribute>
-          </widget>
-         </item>
-         <item>
-          <widget class="QPushButton" name="btn_distances">
-           <property name="text">
-            <string>Distances</string>
-           </property>
-           <property name="checkable">
-            <bool>true</bool>
-           </property>
-           <property name="flat">
-            <bool>true</bool>
-           </property>
-           <attribute name="buttonGroup">
-            <string notr="true">buttonGroup</string>
-           </attribute>
-          </widget>
-         </item>
-        </layout>
-       </widget>
-       <widget class="QCheckBox" name="btn_compare_resort">
-        <property name="geometry">
-         <rect>
-          <x>30</x>
-          <y>310</y>
-          <width>331</width>
-          <height>31</height>
-         </rect>
-        </property>
-        <property name="text">
-         <string>Do resort after search</string>
-        </property>
-        <property name="checkable">
-         <bool>true</bool>
-        </property>
-        <property name="checked">
-         <bool>false</bool>
-        </property>
-       </widget>
-      </widget>
-      <widget class="QWidget" name="tab_grouping">
-       <property name="enabled">
-        <bool>false</bool>
-       </property>
-       <property name="accessibleName">
-        <string/>
-       </property>
-       <attribute name="title">
-        <string>Grouping images</string>
-       </attribute>
-       <layout class="QVBoxLayout" name="verticalLayout_7">
-        <item>
-         <widget class="QGroupBox" name="groupBox_8">
-          <property name="title">
-           <string>Stage one grouping</string>
-          </property>
-          <layout class="QVBoxLayout" name="verticalLayout_5">
-           <item>
-            <widget class="QComboBox" name="combo_stage1_grouping">
-             <property name="currentIndex">
+          <item>
+           <widget class="QGroupBox" name="groupBox_2">
+            <property name="title">
+             <string>Folder size/count constraints</string>
+            </property>
+            <layout class="QGridLayout" name="gridLayout_2">
+             <property name="bottomMargin">
+              <number>4</number>
+             </property>
+             <item row="0" column="0">
+              <widget class="QComboBox" name="combo_folder_constraints">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
+               <item>
+                <property name="text">
+                 <string>Files count in folder</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string>Folders count</string>
+                </property>
+               </item>
+              </widget>
+             </item>
+             <item row="0" column="1">
+              <widget class="QSpinBox" name="spin_num_constraint">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                 <horstretch>30</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="minimumSize">
+                <size>
+                 <width>75</width>
+                 <height>0</height>
+                </size>
+               </property>
+               <property name="alignment">
+                <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+               </property>
+               <property name="minimum">
+                <number>2</number>
+               </property>
+               <property name="maximum">
+                <number>2000</number>
+               </property>
+               <property name="value">
+                <number>18</number>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </item>
+          <item>
+           <widget class="QFrame" name="frame_3">
+            <layout class="QHBoxLayout" name="horizontalLayout_6">
+             <property name="spacing">
+              <number>4</number>
+             </property>
+             <property name="topMargin">
+              <number>0</number>
+             </property>
+             <property name="bottomMargin">
               <number>0</number>
              </property>
              <item>
-              <property name="text">
-               <string comment="Do not perform stage 1 grouping">0. Basic</string>
-              </property>
+              <widget class="QLabel" name="label">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="text">
+                <string>Minimum # of files in group</string>
+               </property>
+              </widget>
              </item>
              <item>
-              <property name="text">
-               <string>1. Tree-like grouping</string>
-              </property>
+              <widget class="QSpinBox" name="spin_folder_size_min_files">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="minimumSize">
+                <size>
+                 <width>75</width>
+                 <height>0</height>
+                </size>
+               </property>
+               <property name="alignment">
+                <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+               </property>
+               <property name="minimum">
+                <number>1</number>
+               </property>
+               <property name="maximum">
+                <number>2000</number>
+               </property>
+               <property name="value">
+                <number>2</number>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </item>
+          <item>
+           <widget class="QFrame" name="frame_7">
+            <layout class="QHBoxLayout" name="horizontalLayout_9">
+             <property name="topMargin">
+              <number>4</number>
+             </property>
+             <property name="bottomMargin">
+              <number>8</number>
+             </property>
+             <item>
+              <widget class="QCheckBox" name="check_equal_name">
+               <property name="text">
+                <string>Consider a group of files as one
+image if their name starts 
+with so much equal symbols:</string>
+               </property>
+              </widget>
              </item>
              <item>
-              <property name="text">
-               <string>2. Weight model grouping</string>
-              </property>
+              <widget class="QSpinBox" name="spin_equal_first_symbols">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="minimumSize">
+                <size>
+                 <width>60</width>
+                 <height>0</height>
+                </size>
+               </property>
+               <property name="alignment">
+                <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+               </property>
+               <property name="minimum">
+                <number>1</number>
+               </property>
+               <property name="maximum">
+                <number>200</number>
+               </property>
+               <property name="value">
+                <number>8</number>
+               </property>
+              </widget>
              </item>
-            </widget>
-           </item>
-          </layout>
-         </widget>
-        </item>
+            </layout>
+           </widget>
+          </item>
+          <item>
+           <widget class="QGroupBox" name="groupBox_6">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Preferred" vsizetype="Maximum">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="title">
+             <string>Prioritize in each folder</string>
+            </property>
+            <layout class="QGridLayout" name="gridLayout_3">
+             <item row="0" column="0">
+              <widget class="QLabel" name="lbl_slider_enforce_equal_2">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
+                 <horstretch>162</horstretch>
+                 <verstretch>95</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="minimumSize">
+                <size>
+                 <width>60</width>
+                 <height>0</height>
+                </size>
+               </property>
+               <property name="layoutDirection">
+                <enum>Qt::LeftToRight</enum>
+               </property>
+               <property name="text">
+                <string>Similar content</string>
+               </property>
+               <property name="alignment">
+                <set>Qt::AlignCenter</set>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="1">
+              <widget class="QLabel" name="lbl_slider_enforce_equal">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
+                 <horstretch>162</horstretch>
+                 <verstretch>95</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="minimumSize">
+                <size>
+                 <width>60</width>
+                 <height>0</height>
+                </size>
+               </property>
+               <property name="layoutDirection">
+                <enum>Qt::LeftToRight</enum>
+               </property>
+               <property name="text">
+                <string>25</string>
+               </property>
+               <property name="alignment">
+                <set>Qt::AlignCenter</set>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="2">
+              <widget class="QLabel" name="lbl_slider_enforce_equal_3">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
+                 <horstretch>162</horstretch>
+                 <verstretch>95</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="minimumSize">
+                <size>
+                 <width>60</width>
+                 <height>0</height>
+                </size>
+               </property>
+               <property name="layoutDirection">
+                <enum>Qt::LeftToRight</enum>
+               </property>
+               <property name="text">
+                <string>Similar file count</string>
+               </property>
+               <property name="alignment">
+                <set>Qt::AlignCenter</set>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="0" colspan="3">
+              <widget class="QSlider" name="slider_enforce_equal">
+               <property name="minimum">
+                <number>0</number>
+               </property>
+               <property name="maximum">
+                <number>300</number>
+               </property>
+               <property name="value">
+                <number>80</number>
+               </property>
+               <property name="orientation">
+                <enum>Qt::Horizontal</enum>
+               </property>
+               <property name="invertedAppearance">
+                <bool>false</bool>
+               </property>
+               <property name="invertedControls">
+                <bool>false</bool>
+               </property>
+               <property name="tickPosition">
+                <enum>QSlider::TicksAbove</enum>
+               </property>
+               <property name="tickInterval">
+                <number>10</number>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </item>
+          <item>
+           <widget class="QGroupBox" name="groupBox_5">
+            <property name="title">
+             <string>Sort final folders by</string>
+            </property>
+            <layout class="QVBoxLayout" name="verticalLayout_4">
+             <item>
+              <widget class="QComboBox" name="combo_final_sort">
+               <property name="currentText">
+                <string>Average brightness  (descending)</string>
+               </property>
+               <property name="currentIndex">
+                <number>2</number>
+               </property>
+               <item>
+                <property name="text">
+                 <string>Average color</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string>Average brightness  (ascending)</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string>Average brightness  (descending)</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string>File count (ascending)</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string>File count (descending)</string>
+                </property>
+               </item>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </item>
+          <item>
+           <layout class="QHBoxLayout" name="horizontalLayout_4" stretch="4,6">
+            <item>
+             <widget class="QGroupBox" name="group_move">
+              <property name="title">
+               <string>File operation</string>
+              </property>
+              <layout class="QVBoxLayout" name="verticalLayout_5">
+               <item>
+                <widget class="QRadioButton" name="radio_move">
+                 <property name="text">
+                  <string>Move</string>
+                 </property>
+                 <property name="checked">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QRadioButton" name="radio_copy">
+                 <property name="text">
+                  <string>Copy</string>
+                 </property>
+                 <property name="checked">
+                  <bool>false</bool>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </widget>
+            </item>
+            <item>
+             <widget class="QGroupBox" name="group_final">
+              <property name="title">
+               <string>After grouping done</string>
+              </property>
+              <layout class="QVBoxLayout" name="verticalLayout_3">
+               <item>
+                <widget class="QCheckBox" name="check_export_histograms">
+                 <property name="text">
+                  <string>Export histograms</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QCheckBox" name="check_create_samples">
+                 <property name="text">
+                  <string>Create sample
+folder images</string>
+                 </property>
+                 <property name="checked">
+                  <bool>false</bool>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </widget>
+            </item>
+           </layout>
+          </item>
+         </layout>
+        </widget>
+       </widget>
+      </item>
+      <item>
+       <layout class="QVBoxLayout" name="verticalLayout_9">
         <item>
-         <widget class="QFrame" name="frame_9">
-          <layout class="QHBoxLayout" name="horizontalLayout_4">
-           <item>
-            <widget class="QCheckBox" name="check_stage2_grouping">
-             <property name="text">
-              <string>Perform second stage grouping 
-(k-means method)</string>
-             </property>
-             <property name="checked">
-              <bool>false</bool>
-             </property>
-            </widget>
-           </item>
-          </layout>
-         </widget>
-        </item>
-        <item>
-         <widget class="QGroupBox" name="groupBox_2">
-          <property name="title">
-           <string>Set folder constraints</string>
-          </property>
-          <layout class="QGridLayout" name="gridLayout_2">
-           <item row="0" column="0">
-            <widget class="QComboBox" name="combo_folder_constraints">
-             <property name="sizePolicy">
-              <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-               <horstretch>0</horstretch>
-               <verstretch>0</verstretch>
-              </sizepolicy>
-             </property>
-             <item>
-              <property name="text">
-               <string>Files count in folder</string>
-              </property>
-             </item>
-             <item>
-              <property name="text">
-               <string>Folders count</string>
-              </property>
-             </item>
-            </widget>
-           </item>
-           <item row="0" column="1">
-            <widget class="QSpinBox" name="spin_num_constraint">
-             <property name="sizePolicy">
-              <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-               <horstretch>30</horstretch>
-               <verstretch>0</verstretch>
-              </sizepolicy>
-             </property>
-             <property name="minimumSize">
-              <size>
-               <width>70</width>
-               <height>0</height>
-              </size>
-             </property>
-             <property name="minimum">
-              <number>2</number>
-             </property>
-             <property name="maximum">
-              <number>2000</number>
-             </property>
-             <property name="value">
-              <number>10</number>
-             </property>
-            </widget>
-           </item>
-          </layout>
-         </widget>
-        </item>
-        <item>
-         <widget class="QGroupBox" name="groupBox_6">
+         <widget class="QGroupBox" name="group_input">
           <property name="sizePolicy">
-           <sizepolicy hsizetype="Preferred" vsizetype="Maximum">
+           <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
             <horstretch>0</horstretch>
             <verstretch>0</verstretch>
            </sizepolicy>
           </property>
           <property name="title">
-           <string>Folder filling priority</string>
+           <string>Input</string>
           </property>
-          <layout class="QGridLayout" name="gridLayout_3">
-           <item row="0" column="0">
-            <widget class="QLabel" name="lbl_slider_enforce_equal_2">
-             <property name="sizePolicy">
-              <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
-               <horstretch>162</horstretch>
-               <verstretch>95</verstretch>
-              </sizepolicy>
-             </property>
-             <property name="minimumSize">
-              <size>
-               <width>60</width>
-               <height>0</height>
-              </size>
-             </property>
-             <property name="layoutDirection">
-              <enum>Qt::LeftToRight</enum>
-             </property>
-             <property name="text">
-              <string>Similar content</string>
-             </property>
-             <property name="alignment">
-              <set>Qt::AlignCenter</set>
-             </property>
-            </widget>
+          <property name="alignment">
+           <set>Qt::AlignJustify|Qt::AlignVCenter</set>
+          </property>
+          <layout class="QVBoxLayout" name="verticalLayout">
+           <item>
+            <layout class="QHBoxLayout" name="horizontalLayout_8">
+             <item>
+              <widget class="QPushButton" name="select_folder_button">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+                 <horstretch>0</horstretch>
+                 <verstretch>255</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="minimumSize">
+                <size>
+                 <width>0</width>
+                 <height>60</height>
+                </size>
+               </property>
+               <property name="maximumSize">
+                <size>
+                 <width>1000</width>
+                 <height>300</height>
+                </size>
+               </property>
+               <property name="acceptDrops">
+                <bool>true</bool>
+               </property>
+               <property name="text">
+                <string>Select folder</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QPushButton" name="select_folder_button_2">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+                 <horstretch>0</horstretch>
+                 <verstretch>255</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="minimumSize">
+                <size>
+                 <width>0</width>
+                 <height>60</height>
+                </size>
+               </property>
+               <property name="maximumSize">
+                <size>
+                 <width>1000</width>
+                 <height>300</height>
+                </size>
+               </property>
+               <property name="acceptDrops">
+                <bool>true</bool>
+               </property>
+               <property name="text">
+                <string>Select folder</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
            </item>
-           <item row="0" column="1">
-            <widget class="QLabel" name="lbl_slider_enforce_equal">
-             <property name="sizePolicy">
-              <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
-               <horstretch>162</horstretch>
-               <verstretch>95</verstretch>
-              </sizepolicy>
-             </property>
-             <property name="minimumSize">
-              <size>
-               <width>60</width>
-               <height>0</height>
-              </size>
-             </property>
-             <property name="layoutDirection">
-              <enum>Qt::LeftToRight</enum>
-             </property>
+           <item>
+            <widget class="QCheckBox" name="check_subdirs_box">
              <property name="text">
-              <string>25</string>
+              <string>Search subdirectories</string>
              </property>
-             <property name="alignment">
-              <set>Qt::AlignCenter</set>
-             </property>
-            </widget>
-           </item>
-           <item row="0" column="2">
-            <widget class="QLabel" name="lbl_slider_enforce_equal_3">
-             <property name="sizePolicy">
-              <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
-               <horstretch>162</horstretch>
-               <verstretch>95</verstretch>
-              </sizepolicy>
-             </property>
-             <property name="minimumSize">
-              <size>
-               <width>60</width>
-               <height>0</height>
-              </size>
-             </property>
-             <property name="layoutDirection">
-              <enum>Qt::LeftToRight</enum>
-             </property>
-             <property name="text">
-              <string>File count</string>
-             </property>
-             <property name="alignment">
-              <set>Qt::AlignCenter</set>
-             </property>
-            </widget>
-           </item>
-           <item row="1" column="0" colspan="3">
-            <widget class="QSlider" name="slider_enforce_equal">
-             <property name="minimum">
-              <number>0</number>
-             </property>
-             <property name="maximum">
-              <number>300</number>
-             </property>
-             <property name="value">
-              <number>80</number>
-             </property>
-             <property name="orientation">
-              <enum>Qt::Horizontal</enum>
-             </property>
-             <property name="invertedAppearance">
-              <bool>false</bool>
-             </property>
-             <property name="invertedControls">
-              <bool>false</bool>
-             </property>
-             <property name="tickPosition">
-              <enum>QSlider::TicksAbove</enum>
-             </property>
-             <property name="tickInterval">
-              <number>10</number>
+             <property name="checked">
+              <bool>true</bool>
              </property>
             </widget>
            </item>
@@ -1354,82 +1109,678 @@ folder images</string>
          </widget>
         </item>
         <item>
-         <widget class="QFrame" name="frame_3">
-          <layout class="QHBoxLayout" name="horizontalLayout_6">
+         <widget class="QGroupBox" name="group_analyze">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="title">
+           <string>Analisys depth</string>
+          </property>
+          <layout class="QVBoxLayout" name="verticalLayout_2">
            <item>
-            <widget class="QLabel" name="label">
-             <property name="text">
-              <string>Minimum # of files in group</string>
+            <widget class="QGroupBox" name="groupBox_8">
+             <property name="title">
+              <string>Divide image to blocks</string>
              </property>
+             <layout class="QHBoxLayout" name="horizontalLayout_5">
+              <item>
+               <widget class="QSlider" name="slider_image_split_steps">
+                <property name="minimum">
+                 <number>0</number>
+                </property>
+                <property name="maximum">
+                 <number>13</number>
+                </property>
+                <property name="pageStep">
+                 <number>1</number>
+                </property>
+                <property name="value">
+                 <number>1</number>
+                </property>
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+                <property name="invertedAppearance">
+                 <bool>false</bool>
+                </property>
+                <property name="invertedControls">
+                 <bool>false</bool>
+                </property>
+                <property name="tickPosition">
+                 <enum>QSlider::TicksAbove</enum>
+                </property>
+                <property name="tickInterval">
+                 <number>1</number>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLabel" name="lbl_image_split_steps">
+                <property name="sizePolicy">
+                 <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
+                  <horstretch>162</horstretch>
+                  <verstretch>95</verstretch>
+                 </sizepolicy>
+                </property>
+                <property name="minimumSize">
+                 <size>
+                  <width>60</width>
+                  <height>0</height>
+                 </size>
+                </property>
+                <property name="layoutDirection">
+                 <enum>Qt::LeftToRight</enum>
+                </property>
+                <property name="text">
+                 <string>5</string>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignCenter</set>
+                </property>
+               </widget>
+              </item>
+             </layout>
             </widget>
            </item>
            <item>
-            <widget class="QSpinBox" name="spin_folder_size_min_files">
-             <property name="minimumSize">
-              <size>
-               <width>60</width>
-               <height>0</height>
-              </size>
+            <widget class="QGroupBox" name="groupBox_4">
+             <property name="title">
+              <string>Histogram bands</string>
              </property>
-             <property name="minimum">
-              <number>1</number>
-             </property>
-             <property name="maximum">
-              <number>2000</number>
-             </property>
-             <property name="value">
-              <number>2</number>
-             </property>
+             <layout class="QHBoxLayout" name="horizontalLayout_3">
+              <item>
+               <widget class="QSlider" name="slider_histogram_bands">
+                <property name="minimum">
+                 <number>2</number>
+                </property>
+                <property name="maximum">
+                 <number>100</number>
+                </property>
+                <property name="pageStep">
+                 <number>2</number>
+                </property>
+                <property name="value">
+                 <number>10</number>
+                </property>
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+                <property name="invertedAppearance">
+                 <bool>false</bool>
+                </property>
+                <property name="invertedControls">
+                 <bool>false</bool>
+                </property>
+                <property name="tickPosition">
+                 <enum>QSlider::TicksAbove</enum>
+                </property>
+                <property name="tickInterval">
+                 <number>10</number>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLabel" name="lbl_histogram_bands">
+                <property name="sizePolicy">
+                 <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
+                  <horstretch>162</horstretch>
+                  <verstretch>95</verstretch>
+                 </sizepolicy>
+                </property>
+                <property name="minimumSize">
+                 <size>
+                  <width>60</width>
+                  <height>0</height>
+                 </size>
+                </property>
+                <property name="layoutDirection">
+                 <enum>Qt::LeftToRight</enum>
+                </property>
+                <property name="text">
+                 <string>5</string>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignCenter</set>
+                </property>
+               </widget>
+              </item>
+             </layout>
             </widget>
            </item>
-          </layout>
-         </widget>
-        </item>
-        <item>
-         <widget class="QFrame" name="frame_7">
-          <layout class="QHBoxLayout" name="horizontalLayout_9">
            <item>
-            <widget class="QCheckBox" name="check_equal_name">
-             <property name="text">
-              <string>Consider a group of files as one
-image if their name starts 
-with so much equal symbols:</string>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QSpinBox" name="spin_equal_first_symbols">
+            <widget class="QGroupBox" name="group_colorspaces_all">
              <property name="sizePolicy">
-              <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
+              <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
                <horstretch>0</horstretch>
                <verstretch>0</verstretch>
               </sizepolicy>
              </property>
-             <property name="minimumSize">
-              <size>
-               <width>40</width>
-               <height>0</height>
-              </size>
+             <property name="title">
+              <string>Use colorspaces</string>
              </property>
-             <property name="minimum">
-              <number>1</number>
-             </property>
-             <property name="maximum">
-              <number>200</number>
-             </property>
-             <property name="value">
-              <number>8</number>
-             </property>
+             <layout class="QHBoxLayout" name="horizontalLayout_7">
+              <property name="spacing">
+               <number>4</number>
+              </property>
+              <property name="sizeConstraint">
+               <enum>QLayout::SetDefaultConstraint</enum>
+              </property>
+              <property name="leftMargin">
+               <number>3</number>
+              </property>
+              <property name="topMargin">
+               <number>3</number>
+              </property>
+              <property name="rightMargin">
+               <number>3</number>
+              </property>
+              <property name="bottomMargin">
+               <number>3</number>
+              </property>
+              <item>
+               <widget class="QListWidget" name="list_color_spaces">
+                <property name="sizePolicy">
+                 <sizepolicy hsizetype="Expanding" vsizetype="Minimum">
+                  <horstretch>0</horstretch>
+                  <verstretch>0</verstretch>
+                 </sizepolicy>
+                </property>
+                <property name="minimumSize">
+                 <size>
+                  <width>70</width>
+                  <height>130</height>
+                 </size>
+                </property>
+                <property name="maximumSize">
+                 <size>
+                  <width>90</width>
+                  <height>130</height>
+                 </size>
+                </property>
+                <property name="frameShape">
+                 <enum>QFrame::StyledPanel</enum>
+                </property>
+                <property name="frameShadow">
+                 <enum>QFrame::Plain</enum>
+                </property>
+                <property name="lineWidth">
+                 <number>3</number>
+                </property>
+                <property name="midLineWidth">
+                 <number>2</number>
+                </property>
+                <property name="verticalScrollBarPolicy">
+                 <enum>Qt::ScrollBarAlwaysOff</enum>
+                </property>
+                <property name="autoScrollMargin">
+                 <number>12</number>
+                </property>
+                <property name="editTriggers">
+                 <set>QAbstractItemView::NoEditTriggers</set>
+                </property>
+                <property name="showDropIndicator" stdset="0">
+                 <bool>false</bool>
+                </property>
+                <property name="alternatingRowColors">
+                 <bool>false</bool>
+                </property>
+                <property name="selectionMode">
+                 <enum>QAbstractItemView::MultiSelection</enum>
+                </property>
+                <property name="textElideMode">
+                 <enum>Qt::ElideMiddle</enum>
+                </property>
+                <property name="layoutMode">
+                 <enum>QListView::SinglePass</enum>
+                </property>
+                <property name="spacing">
+                 <number>1</number>
+                </property>
+                <property name="viewMode">
+                 <enum>QListView::ListMode</enum>
+                </property>
+                <property name="modelColumn">
+                 <number>0</number>
+                </property>
+                <property name="currentRow">
+                 <number>1</number>
+                </property>
+                <property name="sortingEnabled">
+                 <bool>false</bool>
+                </property>
+                <item>
+                 <property name="text">
+                  <string notr="true">HSV</string>
+                 </property>
+                 <property name="textAlignment">
+                  <set>AlignCenter</set>
+                 </property>
+                 <property name="flags">
+                  <set>ItemIsSelectable|ItemIsEnabled</set>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string notr="true">RGB</string>
+                 </property>
+                 <property name="textAlignment">
+                  <set>AlignCenter</set>
+                 </property>
+                 <property name="flags">
+                  <set>ItemIsSelectable|ItemIsEnabled</set>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string notr="true">CMYK</string>
+                 </property>
+                 <property name="textAlignment">
+                  <set>AlignCenter</set>
+                 </property>
+                 <property name="flags">
+                  <set>ItemIsSelectable|ItemIsEnabled</set>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string notr="true">YCbCr</string>
+                 </property>
+                 <property name="textAlignment">
+                  <set>AlignCenter</set>
+                 </property>
+                 <property name="flags">
+                  <set>ItemIsSelectable|ItemIsEnabled</set>
+                 </property>
+                </item>
+               </widget>
+              </item>
+              <item>
+               <widget class="QListWidget" name="list_color_spaces_HSV">
+                <property name="sizePolicy">
+                 <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                  <horstretch>0</horstretch>
+                  <verstretch>0</verstretch>
+                 </sizepolicy>
+                </property>
+                <property name="minimumSize">
+                 <size>
+                  <width>30</width>
+                  <height>95</height>
+                 </size>
+                </property>
+                <property name="maximumSize">
+                 <size>
+                  <width>50</width>
+                  <height>130</height>
+                 </size>
+                </property>
+                <property name="frameShape">
+                 <enum>QFrame::StyledPanel</enum>
+                </property>
+                <property name="frameShadow">
+                 <enum>QFrame::Plain</enum>
+                </property>
+                <property name="lineWidth">
+                 <number>3</number>
+                </property>
+                <property name="midLineWidth">
+                 <number>2</number>
+                </property>
+                <property name="verticalScrollBarPolicy">
+                 <enum>Qt::ScrollBarAlwaysOff</enum>
+                </property>
+                <property name="editTriggers">
+                 <set>QAbstractItemView::NoEditTriggers</set>
+                </property>
+                <property name="showDropIndicator" stdset="0">
+                 <bool>false</bool>
+                </property>
+                <property name="alternatingRowColors">
+                 <bool>false</bool>
+                </property>
+                <property name="selectionMode">
+                 <enum>QAbstractItemView::MultiSelection</enum>
+                </property>
+                <property name="layoutMode">
+                 <enum>QListView::SinglePass</enum>
+                </property>
+                <property name="spacing">
+                 <number>1</number>
+                </property>
+                <property name="modelColumn">
+                 <number>0</number>
+                </property>
+                <item>
+                 <property name="text">
+                  <string notr="true">H</string>
+                 </property>
+                 <property name="textAlignment">
+                  <set>AlignCenter</set>
+                 </property>
+                 <property name="flags">
+                  <set>ItemIsSelectable|ItemIsEnabled</set>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string notr="true">S</string>
+                 </property>
+                 <property name="textAlignment">
+                  <set>AlignCenter</set>
+                 </property>
+                 <property name="flags">
+                  <set>ItemIsSelectable|ItemIsEnabled</set>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string notr="true">V</string>
+                 </property>
+                 <property name="textAlignment">
+                  <set>AlignCenter</set>
+                 </property>
+                 <property name="flags">
+                  <set>ItemIsSelectable|ItemIsEnabled</set>
+                 </property>
+                </item>
+               </widget>
+              </item>
+              <item>
+               <widget class="QListWidget" name="list_color_spaces_RGB">
+                <property name="sizePolicy">
+                 <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                  <horstretch>0</horstretch>
+                  <verstretch>0</verstretch>
+                 </sizepolicy>
+                </property>
+                <property name="minimumSize">
+                 <size>
+                  <width>30</width>
+                  <height>95</height>
+                 </size>
+                </property>
+                <property name="maximumSize">
+                 <size>
+                  <width>35</width>
+                  <height>130</height>
+                 </size>
+                </property>
+                <property name="frameShape">
+                 <enum>QFrame::StyledPanel</enum>
+                </property>
+                <property name="frameShadow">
+                 <enum>QFrame::Plain</enum>
+                </property>
+                <property name="lineWidth">
+                 <number>3</number>
+                </property>
+                <property name="midLineWidth">
+                 <number>2</number>
+                </property>
+                <property name="verticalScrollBarPolicy">
+                 <enum>Qt::ScrollBarAlwaysOff</enum>
+                </property>
+                <property name="editTriggers">
+                 <set>QAbstractItemView::NoEditTriggers</set>
+                </property>
+                <property name="showDropIndicator" stdset="0">
+                 <bool>false</bool>
+                </property>
+                <property name="alternatingRowColors">
+                 <bool>false</bool>
+                </property>
+                <property name="selectionMode">
+                 <enum>QAbstractItemView::MultiSelection</enum>
+                </property>
+                <property name="layoutMode">
+                 <enum>QListView::SinglePass</enum>
+                </property>
+                <property name="spacing">
+                 <number>1</number>
+                </property>
+                <property name="modelColumn">
+                 <number>0</number>
+                </property>
+                <property name="currentRow">
+                 <number>-1</number>
+                </property>
+                <item>
+                 <property name="text">
+                  <string notr="true">R</string>
+                 </property>
+                 <property name="textAlignment">
+                  <set>AlignCenter</set>
+                 </property>
+                 <property name="flags">
+                  <set>ItemIsSelectable|ItemIsEnabled</set>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string notr="true">G</string>
+                 </property>
+                 <property name="textAlignment">
+                  <set>AlignCenter</set>
+                 </property>
+                 <property name="flags">
+                  <set>ItemIsSelectable|ItemIsEnabled</set>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string notr="true">B</string>
+                 </property>
+                 <property name="textAlignment">
+                  <set>AlignCenter</set>
+                 </property>
+                 <property name="flags">
+                  <set>ItemIsSelectable|ItemIsEnabled</set>
+                 </property>
+                </item>
+               </widget>
+              </item>
+              <item>
+               <widget class="QListWidget" name="list_color_spaces_CMYK">
+                <property name="sizePolicy">
+                 <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                  <horstretch>0</horstretch>
+                  <verstretch>0</verstretch>
+                 </sizepolicy>
+                </property>
+                <property name="minimumSize">
+                 <size>
+                  <width>30</width>
+                  <height>95</height>
+                 </size>
+                </property>
+                <property name="maximumSize">
+                 <size>
+                  <width>35</width>
+                  <height>130</height>
+                 </size>
+                </property>
+                <property name="frameShape">
+                 <enum>QFrame::StyledPanel</enum>
+                </property>
+                <property name="frameShadow">
+                 <enum>QFrame::Plain</enum>
+                </property>
+                <property name="lineWidth">
+                 <number>3</number>
+                </property>
+                <property name="midLineWidth">
+                 <number>2</number>
+                </property>
+                <property name="verticalScrollBarPolicy">
+                 <enum>Qt::ScrollBarAlwaysOff</enum>
+                </property>
+                <property name="editTriggers">
+                 <set>QAbstractItemView::NoEditTriggers</set>
+                </property>
+                <property name="showDropIndicator" stdset="0">
+                 <bool>false</bool>
+                </property>
+                <property name="alternatingRowColors">
+                 <bool>false</bool>
+                </property>
+                <property name="selectionMode">
+                 <enum>QAbstractItemView::MultiSelection</enum>
+                </property>
+                <property name="layoutMode">
+                 <enum>QListView::SinglePass</enum>
+                </property>
+                <property name="spacing">
+                 <number>1</number>
+                </property>
+                <property name="modelColumn">
+                 <number>0</number>
+                </property>
+                <property name="currentRow">
+                 <number>-1</number>
+                </property>
+                <item>
+                 <property name="text">
+                  <string notr="true">C</string>
+                 </property>
+                 <property name="textAlignment">
+                  <set>AlignCenter</set>
+                 </property>
+                 <property name="flags">
+                  <set>ItemIsSelectable|ItemIsEnabled</set>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string notr="true">M</string>
+                 </property>
+                 <property name="textAlignment">
+                  <set>AlignCenter</set>
+                 </property>
+                 <property name="flags">
+                  <set>ItemIsSelectable|ItemIsEnabled</set>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string notr="true">Y</string>
+                 </property>
+                 <property name="textAlignment">
+                  <set>AlignCenter</set>
+                 </property>
+                 <property name="flags">
+                  <set>ItemIsSelectable|ItemIsEnabled</set>
+                 </property>
+                </item>
+               </widget>
+              </item>
+              <item>
+               <widget class="QListWidget" name="list_color_spaces_YCbCr">
+                <property name="sizePolicy">
+                 <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                  <horstretch>0</horstretch>
+                  <verstretch>0</verstretch>
+                 </sizepolicy>
+                </property>
+                <property name="minimumSize">
+                 <size>
+                  <width>35</width>
+                  <height>95</height>
+                 </size>
+                </property>
+                <property name="maximumSize">
+                 <size>
+                  <width>35</width>
+                  <height>130</height>
+                 </size>
+                </property>
+                <property name="frameShape">
+                 <enum>QFrame::StyledPanel</enum>
+                </property>
+                <property name="frameShadow">
+                 <enum>QFrame::Plain</enum>
+                </property>
+                <property name="lineWidth">
+                 <number>3</number>
+                </property>
+                <property name="midLineWidth">
+                 <number>2</number>
+                </property>
+                <property name="verticalScrollBarPolicy">
+                 <enum>Qt::ScrollBarAlwaysOff</enum>
+                </property>
+                <property name="editTriggers">
+                 <set>QAbstractItemView::NoEditTriggers</set>
+                </property>
+                <property name="showDropIndicator" stdset="0">
+                 <bool>false</bool>
+                </property>
+                <property name="alternatingRowColors">
+                 <bool>false</bool>
+                </property>
+                <property name="selectionMode">
+                 <enum>QAbstractItemView::MultiSelection</enum>
+                </property>
+                <property name="layoutMode">
+                 <enum>QListView::SinglePass</enum>
+                </property>
+                <property name="spacing">
+                 <number>1</number>
+                </property>
+                <property name="modelColumn">
+                 <number>0</number>
+                </property>
+                <property name="currentRow">
+                 <number>-1</number>
+                </property>
+                <item>
+                 <property name="text">
+                  <string notr="true">Y</string>
+                 </property>
+                 <property name="textAlignment">
+                  <set>AlignCenter</set>
+                 </property>
+                 <property name="flags">
+                  <set>ItemIsSelectable|ItemIsEnabled</set>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string notr="true">Cb</string>
+                 </property>
+                 <property name="textAlignment">
+                  <set>AlignCenter</set>
+                 </property>
+                 <property name="flags">
+                  <set>ItemIsSelectable|ItemIsEnabled</set>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string notr="true">Cr</string>
+                 </property>
+                 <property name="textAlignment">
+                  <set>AlignCenter</set>
+                 </property>
+                 <property name="flags">
+                  <set>ItemIsSelectable|ItemIsEnabled</set>
+                 </property>
+                </item>
+               </widget>
+              </item>
+             </layout>
             </widget>
            </item>
           </layout>
          </widget>
         </item>
        </layout>
-      </widget>
-     </widget>
+      </item>
+     </layout>
     </item>
-    <item row="4" column="0" colspan="3">
+    <item>
      <widget class="QFrame" name="frame">
       <property name="frameShape">
        <enum>QFrame::StyledPanel</enum>
@@ -1438,6 +1789,12 @@ with so much equal symbols:</string>
        <enum>QFrame::Raised</enum>
       </property>
       <layout class="QHBoxLayout" name="horizontalLayout">
+       <property name="topMargin">
+        <number>4</number>
+       </property>
+       <property name="bottomMargin">
+        <number>2</number>
+       </property>
        <item>
         <widget class="QPushButton" name="btn_start">
          <property name="minimumSize">
@@ -1517,7 +1874,4 @@ window</string>
  </widget>
  <resources/>
  <connections/>
- <buttongroups>
-  <buttongroup name="buttonGroup"/>
- </buttongroups>
 </ui>

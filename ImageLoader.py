@@ -1,11 +1,11 @@
 import io
 import rawpy
 import numpy as np
-import pandas as pd
-from PIL import Image, ImageStat
 from scipy import ndimage
-from PyQt5 import QtGui
 from PIL import Image, ImageOps, ImageChops, ImageStat
+# import pandas as pd
+# from PIL import Image, ImageStat
+# from PyQt5 import QtGui
 
 plain_file_types = ['jpg', 'png', 'jpeg', 'gif']
 raw_file_types = ['nef', 'dng']
@@ -56,38 +56,62 @@ def load_image(image_full_name):
         print("Error reading ", image_full_name, e)
 
 
-def generate_image_vector(image_full_names, selected_color_bands: dict, hg_bands, im_divisions, need_hue):
+def load_check_resize(image_full_name, square_size=240):
+    loaded_image = load_image(image_full_name)
+    if loaded_image is None:
+        return None, None
+    img_size = loaded_image.size
+    try:
+        img = loaded_image.resize((240, 240), resample=Image.BILINEAR)
+        return img_size, img
+    except Exception as e:
+        print(f"Image {image_full_name} seems to be corrupt.", e)
+        return None, None
+
+
+def generate_image_vector(image_full_names, selected_color_bands: dict, hg_bands, im_divisions, single_hg):
     bands_gaussian = hg_bands ** .5 / 6
-    convert_to = np.uint8 if im_divisions >= 15 else np.uint16
+    # convert_to = np.uint8 if im_divisions >= 15 else np.uint16
+    convert_to = np.int32
 
     def extract_image_data(im_record):
-        img = load_image(im_record.image_paths)
+        img_size, img = load_check_resize(im_record.image_paths)
         if img is None:
             return
-        im_record["sizes"] = img.size
-        im_record["megapixels"] = img.size[0] * img.size[1] / 1e6
-        img = img.resize((240, 240), resample=Image.BILINEAR)
-        img_stat = ImageStat.Stat(img.convert("RGB"))
-        im_record["means"] = int(sum(img_stat.mean) // 3)
+        im_record["sizes"] = img_size
+        im_record["megapixels"] = img_size[0] * img_size[1] / 1e6
+        img_stat = ImageStat.Stat(img.convert("L"))
+        im_record["means"] = int(img_stat.mean[0])
+        combined_hg = []
         for current_color_space, color_subspaces in selected_color_bands.items():
             converted_image = img.convert(current_color_space)
             for band in set(converted_image.getbands()) & color_subspaces:
-                combined_hg = []
+                if not single_hg:
+                    combined_hg = []
                 band_array = np.asarray(converted_image.getchannel(band))
                 for big_part in np.split(band_array, im_divisions):
                     for small_part in np.split(big_part, im_divisions, 1):
                         partial_hg = np.histogram(small_part, bins=hg_bands, range=(0., 255.))[0]
                         partial_hg = gaussian_filter(partial_hg, bands_gaussian, mode='nearest')
                         combined_hg.append(partial_hg)
-                combined_hg = np.concatenate(combined_hg)
-                combined_hg_size = np.linalg.norm(combined_hg)
-                im_record[current_color_space + "_" + band] = combined_hg.astype(convert_to)
-                im_record[current_color_space + "_" + band + "_size"] = combined_hg_size
-        if need_hue:
-            hue_hg_one = np.histogram(img.convert("HSV").getchannel("H"), bins=256, range=(0., 255.))[0]
-            max_hue = np.argmax(gaussian_filter1d(hue_hg_one, 15, mode='wrap').astype(np.uint16)).tolist()
-            im_record["hue_hg"] = hue_hg_one.astype(np.uint16)
-            im_record["max_hue"] = max_hue
+                if not single_hg:
+                    im_record[current_color_space + "_" + band] = np.concatenate(combined_hg).astype(convert_to)
+                    # combined_hg = np.concatenate(combined_hg)
+                # im_record[current_color_space + "_" + band + "_size"] = combined_hg_size
+        if single_hg:
+            hsv_hg = img.convert("HSV")
+            sum_HSV_hg = []
+            for channel in "HSV":
+                hg_channel = np.histogram(hsv_hg.getchannel(channel), bins=256, range=(0, 255))[0]
+                sum_HSV_hg.append(hg_channel)
+            im_record["hsv_hg"] = np.concatenate(sum_HSV_hg).astype(convert_to)
+            # hue_hg_one = np.histogram(img.convert("HSV").getchannel("H"), bins=256, range=(0., 255.))[0]
+            # max_hue = np.argmax(gaussian_filter1d(hue_hg_one, 15, mode='wrap').astype(np.uint16)).tolist()
+            # im_record["hue_hg"] = hue_hg_one.astype(np.uint16)
+            # im_record["max_hue"] = max_hue
+            im_record["hg"] = np.concatenate(combined_hg).astype(convert_to)
+            # im_record["hg"] = combined_hg
+
         return im_record
 
     image_full_names2 = image_full_names.apply(extract_image_data, axis=1)
@@ -95,15 +119,6 @@ def generate_image_vector(image_full_names, selected_color_bands: dict, hg_bands
 
 
 def generate_thumb_pixmap(im_l, im_r, crop_l_orig, crop_r_orig, thm_size, thumb_mode, thumb_colored, thumb_id):
-
-    # def make_pixmap(img):
-    #     qimage_obj = QtGui.QImage(img.tobytes(), img.width, img.height, img.width * 3, QtGui.QImage.Format_RGB888)
-    #     pixmap_obj = QtGui.QPixmap(qimage_obj)
-    #     return pixmap_obj
-
-    # def make_qimage(img):
-    #     qimage_obj = QtGui.QImage(img.tobytes(), img.width, img.height, img.width * 3, QtGui.QImage.Format_RGB888)
-    #     return qimage_obj
 
     image_l = load_image(im_l).convert("RGB")
     image_r = load_image(im_r).convert("RGB")

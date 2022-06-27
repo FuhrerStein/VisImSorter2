@@ -1,9 +1,11 @@
+------------  todo: Generally
+switch to pathlib
+
+Stats tool: average HG, average image.
+
 ------------  todo: Grouping
-option to change subfolder naming scheme (add color into the name, number of files)
-search similar images to sample image or sample folder with images
 figure out what to do if two files have the same name and belong to the same folder
 
-modify sorting algorithm so that final number of folders is roughly equal to desired
 initial grouping is made only using image pairs rather than group pairs
 when searching for closest pairs, sort also by other bands, not only by HSV hue
 
@@ -13,12 +15,14 @@ scan forders and calculate difference between images in each
 
 rewrite stage2_regroup into using pool in multiprocessing mode
 replace re by fnmatch
+visualize clustering with animated thumbnails.
 
+migrate to new framework
 
 ------------  todo: De-duplication
 clear suggestion options
 use Gradients to find best fit
-
+search similar images to sample image or sample folder with images
 zooming of previews
 panning of previews
 
@@ -27,6 +31,7 @@ button to hide options
 (debatable) start deep compare in parallel right after first valid pair appeared (multiprocessing)
 (debatable) adjust best pairs count by image count (debatable - file structure is scanned after count is chosen)
 
+adjust search distance while resorting 
 
 load *ui files directly
 animate with https://doc.qt.io/qtforpython-5/overviews/animation-overview.html?highlight=graphics%20framework
@@ -41,7 +46,7 @@ move view window when resizing thumbs
 
 
 
-
+option to change subfolder naming scheme (add color into the name, number of files)
 limit panning
 load thumbs in separate thread
 resize thumbs

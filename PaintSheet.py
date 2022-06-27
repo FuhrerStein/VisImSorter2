@@ -707,17 +707,12 @@ class ImageThumb(QtWidgets.QGraphicsPixmapItem):
     def show_hide(self, element, mark):
         element.show() if mark else element.hide()
 
-        # if mark:
-        #     element.show()
-        # else:
-        #     element.hide()
-
     def set_brush_pen(self, item: QGraphicsEllipseItem, mark, translucent):
         if mark == 0:
             item.hide()
         else:
             item.show()
-            brush_id = (mark < 0) * 2 + translucent
+            brush_id = (mark > 0) * 2 + translucent
             item.setBrush(self.brush_list[brush_id])
 
             # if mark < 0:
