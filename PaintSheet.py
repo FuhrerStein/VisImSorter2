@@ -145,7 +145,7 @@ class PaintSheet(QWidget):
                 self.img_xy.setY(self.size().height() // 2)
             if self.img_xy.y() < -self.size().height() // 2:
                 self.img_xy.setY(-self.size().height() // 2)
-            print(self.img_xy)
+            # print(self.img_xy)
         elif self.adjustment_mode == 2:
             new_zoom = self.img_zoom * ((self.mouse_press_point.y() - event.y()) / 200 + 1)
             zoom_coef = new_zoom / self.img_zoom - 1
@@ -436,7 +436,7 @@ class ThumbsView(QGraphicsView):
                 self.switch_category = 1 if movement.y() > 0 else 5                
             else: 
                 self.switch_category = 4 if movement.x() > 0 else 2 
-            print(self.switch_category)
+            # print(self.switch_category)
             return
         elif self.pressed_mouse != 0:
             return
@@ -476,12 +476,12 @@ class ThumbsView(QGraphicsView):
         self.pressed_mouse |= int(event.button())
         self.pressed_coord = event.pos()
         self.switch_category = 0
-        print("self.this_tile_number ", self.this_tile_number)
+        # print("self.this_tile_number ", self.this_tile_number)
         return super().mousePressEvent(event)
     
     def mouseReleaseEvent(self, event: QtGui.QMouseEvent) -> None:
-        print("self.this_tile_number at release ", self.this_tile_number)
-        print("self.switch_category at release ", self.switch_category)
+        # print("self.this_tile_number at release ", self.this_tile_number)
+        # print("self.switch_category at release ", self.switch_category)
         self.pressed_mouse &= ~ event.button()        
         self.last_mouse_x = event.pos().x()
         new_pair = abs(self.this_tile_number) - self.parent_sheet.parent_object.current_pair
@@ -496,7 +496,7 @@ class ThumbsView(QGraphicsView):
             self.parent_sheet.update_selection(abs(self.this_tile_number))
             self.parent_sheet.update()
             self.show_pair(new_pair)
-            print(f"Switching to {self.this_tile_number}")
+            # print(f"Switching to {self.this_tile_number}")
         self.switch_category = 0
         self.scroll_stoper = -1
         self.scroll_timer.singleShot(400, Qt.TimerType.PreciseTimer, self.unstop_scroller)
@@ -506,7 +506,7 @@ class ThumbsView(QGraphicsView):
         self.this_tile_number = -abs(self.this_tile_number)
         if self.switch_category == 0:
             self.switch_category = 3
-            print(f"Switching self.switch_category")
+            # print(f"Switching self.switch_category")
     
     def unstop_scroller(self):
         self.scroll_stoper = 0
@@ -604,7 +604,7 @@ class ThumbSheet_Scene(QWidget):
             self.parent_object.request_thumb(thumb_id)
             self.requested_thumbs.add(thumb_id)
             self.add_thumb_item(thumb_id, None)
-            print(f"Pair {thumb_id} stage -")
+            # print(f"Pair {thumb_id} stage -")
             return
     
     def update_badges(self, thumb_id, mark_set):

@@ -77,7 +77,7 @@ def generate_image_vector(image_full_names, selected_color_bands: dict, hg_bands
     def extract_image_data(im_record):
         img_size, img = load_check_resize(im_record.image_paths)
         if img is None:
-            return
+            return im_record
         im_record["sizes"] = img_size
         im_record["megapixels"] = img_size[0] * img_size[1] / 1e6
         img_stat = ImageStat.Stat(img.convert("L"))

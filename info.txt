@@ -20,6 +20,11 @@ visualize clustering with animated thumbnails.
 migrate to new framework
 
 ------------  todo: De-duplication
+for fast crop search, use horizontal and vertical 1xH and Wx1 images (or histograms)
+separate rough difference (made with HG) and strict difference
+
+
+
 clear suggestion options
 use Gradients to find best fit
 search similar images to sample image or sample folder with images

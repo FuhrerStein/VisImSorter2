@@ -485,7 +485,7 @@
          <bool>true</bool>
         </property>
         <property name="currentIndex">
-         <number>1</number>
+         <number>0</number>
         </property>
         <widget class="QWidget" name="tab_unduplicate">
          <property name="sizePolicy">
@@ -1102,6 +1102,13 @@ folder images</string>
              </property>
              <property name="checked">
               <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QCheckBox" name="check_ignore_ext">
+             <property name="text">
+              <string>Ignore extentions</string>
              </property>
             </widget>
            </item>
