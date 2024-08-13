@@ -25,7 +25,7 @@ from PIL import Image, ImageOps, ImageChops
 from PyQt5.QtWidgets import QMessageBox, QFileDialog, QApplication, QMainWindow
 from PyQt5 import QtCore, QtGui, QtWidgets
 from scipy import ndimage
-from PaintSheet import PaintSheet, ThumbSheet_Scene, recieve_loaded_thumb, restrict, smootherstep_ease
+from PaintSheet import PaintSheet, ThumbSheet_Scene, receive_loaded_thumb, restrict, smootherstep_ease
 from ImageLoader import load_image, generate_image_vector, all_file_types, generate_thumb_pixmap
 
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
@@ -44,7 +44,6 @@ image_to_group = np.ones(0)
 group_lists = []
 image_count = 0
 
-
 gaussian_filter1d = ndimage.gaussian_filter1d
 median_filter = ndimage.median_filter
 gaussian_filter = ndimage.gaussian_filter
@@ -53,7 +52,7 @@ la_norm = np.linalg.norm
 function_queue = []
 
 
-class Constants():
+class Constants:
     final_sort_by_color = 150
     final_sort_by_brightness_asc = 151
     final_sort_by_brightness_desc = 152
@@ -77,10 +76,14 @@ class Config:
     target_group_size = 0
     folder_size_min_files = 0
     selected_color_bands = dict()
-    compare_resort = False
+    compare_crops = False
     ignore_ext = False
+    do_line_images = False
+    # do_line_images = True
+    duplicate_search_type = 1
 
     max_pairs = 0
+    resort_pairs = 0
     start_folder = ""
     start_folder_2 = ""
     second_set_size = 0
@@ -90,7 +93,6 @@ class Config:
     create_samples = False
 
 
-
 class Data:
     status_text = ""
     progress_max = 100
@@ -98,6 +100,7 @@ class Data:
     last_iteration_progress_value = 0
     run_index = 0
     working_bands = list()
+    working_lines = list()
     raw_time_left = 0
     smooth_end_time = [0.] * 50
     smooth_speed = None
@@ -107,9 +110,9 @@ class Data:
     passed_percent = 0
     HSV_color_codes = None
     HSV_color_names = None
-    check_crop_levels = 1
+    # check_crop_levels = 1
     new_folder = ""
-    new_vector_folder = ""
+    new_vector_folder = "y:\\Vector\\"
 
     def set_smooth_time(self, iterations: int = 1):
         self.smooth_time_iterations = iterations
@@ -159,6 +162,8 @@ def run_sequence():
     function_queue.append(scan_for_images_new)
     if conf.start_folder_2:
         function_queue.append(scan_for_images_second)
+    elif conf.duplicate_search_type == 2:
+        conf.duplicate_search_type = 1
     function_queue.append(collect_image_vectors)
 
     if conf.search_duplicates:
@@ -172,6 +177,8 @@ def run_sequence():
             choose_destination_folder,
             move_files_pd
         ]
+        if conf.export_histograms:
+            function_queue.append(export_image_vectors)
 
     start_time = timer()
 
@@ -207,7 +214,7 @@ def init_pool():
     pool = mp.Pool(processes=conf.max_threads)
 
 
-def run_fast_scandir(directory_in, ext):    # dir: str, ext: list
+def run_fast_scandir(directory_in, ext):  # dir: str, ext: list
     subfolders, files = [], []
 
     for f in os.scandir(directory_in):
@@ -238,7 +245,8 @@ def scan_for_images_new(second_scan=False):
         print(f"Found {len(image_paths)} images.")
     image_paths = pd.Series(image_paths).apply(os.path.normpath).rename("image_paths")
     image_names = image_paths.apply(os.path.basename).rename("image_names")
-    image_paths_db = pd.DataFrame((image_paths, image_names)).T.copy()
+    image_folders = image_paths.apply(os.path.dirname).rename("image_folders")
+    image_paths_db = pd.DataFrame((image_paths, image_names, image_folders)).T.copy()
 
     if conf.group_with_similar_name > 0:
         image_name_groups = image_names.apply(lambda x: x[:conf.group_with_similar_name])
@@ -261,15 +269,25 @@ def collect_image_vectors():
     local_run_index = data.run_index
     image_count = len(image_paths_db)
     data.working_bands.clear()
+    conf.do_line_images = False  # this is a disabled feature for now.
 
     if conf.search_duplicates:
         for current_color_space, color_subspaces in conf.selected_color_bands.items():
             for band in color_subspaces:
                 band_full_name = current_color_space + "_" + band
-                image_paths_db[band_full_name] = None
+                # image_paths_db[band_full_name] = None
                 data.working_bands.append(band_full_name)
+                if conf.do_line_images:
+                    data.working_lines.append(band_full_name + "_Horiz")
+                    data.working_lines.append(band_full_name + "_Vert")
+                    image_paths_db[data.working_lines] = None
+                    image_paths_db[[i + "_small" for i in data.working_lines]] = None
+                else:
+                    image_paths_db[data.working_bands] = None
     else:
         image_paths_db['hg'] = None
+
+    # image_paths_db[data.working_bands + data.working_lines] = None
 
     set_status(f"(1/4) Generating image histograms...", progress_max=image_count, progress_value=0)
     image_DB = []
@@ -284,8 +302,8 @@ def collect_image_vectors():
 
     for path_db_chunks in path_dbs:
         for path_db_chunk in path_db_chunks:
-            task_parameters = (path_db_chunk, conf.selected_color_bands,
-                               conf.hg_bands_count, conf.image_divisions, not conf.search_duplicates)
+            task_parameters = (path_db_chunk, conf.selected_color_bands, conf.hg_bands_count,
+                               conf.image_divisions, not conf.search_duplicates, conf.do_line_images)
             result = pool.apply_async(generate_image_vector, task_parameters, callback=image_vector_callback)
             results.append(result)
 
@@ -297,13 +315,18 @@ def collect_image_vectors():
                     return
             res.wait()
 
-    image_DB = pd.concat(image_DB)
-    image_DB = image_DB.astype({"means": int})
-    image_count = len(image_DB)
+    if image_DB:
+        image_DB = pd.concat(image_DB)
+        image_DB.sort_values("means", inplace=True)
+        image_DB = image_DB.astype({"means": int})
+        image_count = len(image_DB)
+        print(f"Loaded {image_count} image histograms.")
+    else:
+        image_count = 0
+
     if image_count == 0:
         set_status("Failed to create image database.", abort=True)
-    else:
-        print(f"Loaded {image_count} image histograms.")
+        return
 
     if not conf.search_duplicates:
         if conf.folder_constraint_type:
@@ -326,71 +349,109 @@ def image_vector_callback(vector_pack):
 def create_distance_db_duplicates():
     global distance_db
     local_run_index = data.run_index
-    im_histograms = image_DB[data.working_bands]
+    hard_db_size_limit = conf.max_pairs * 20 + 10000
+    steps_done = 0
+    max_diff = 10000000
 
-    def compact_compare_db():
+    def compact_compare_db(compare_db):
+        nonlocal max_diff
         compare_db_sorted = compare_db.sort_values(by="mean_diffs")
-        highest_diff = compare_db_sorted.mean_diffs.iloc[min(conf.max_pairs, len(compare_db) - 1)] * 3 + 5
+        highest_diff = 5 + 3 * compare_db_sorted.mean_diffs.iloc[min(conf.max_pairs, len(compare_db) - 1)]
         compare_sub_db_size = compare_db_sorted.mean_diffs.values.searchsorted(highest_diff)
-        compare_sub_db_size = max(compare_sub_db_size, conf.max_pairs * 20 + 10000)
-        return compare_db.iloc[:compare_sub_db_size].copy()
+        cropped_db = compare_db_sorted.iloc[:min(compare_sub_db_size, hard_db_size_limit)].copy()
+        max_diff = 10000000 if len(cropped_db) < hard_db_size_limit else compare_db_sorted.mean_diffs.iloc[-1]
+        return cropped_db
 
-    if conf.second_set_size:
-        im_id_combinations = itertools.product(range(conf.second_set_size), range(conf.second_set_size, len(image_DB)))
-        compare_db = pd.DataFrame(im_id_combinations, columns=["im_1", "im_2"])
-        compare_db["mean_diffs"] = np.abs(
-            image_DB.means[compare_db.im_1].values - image_DB.means[compare_db.im_2].values)
-        # compare_db.sort_values(by="mean_diffs", inplace=True)
-        # highest_diff = compare_db.mean_diffs.iloc[min(conf.max_pairs, len(compare_db) - 1)] * 1.5 + 5
-        # compare_sub_db_size = compare_db.mean_diffs.values.searchsorted(highest_diff)
-        # compare_sub_db_size = max(compare_sub_db_size, conf.max_pairs * 3 + 10000)
-        # compare_db_rest = compare_db.iloc[:compare_sub_db_size]
-        compare_db_rest = compact_compare_db()
-    else:
-        # im_id_combinations = itertools.combinations(range(len(image_DB)), 2)
-        set_status("(2/4) Fast compare image vectors", 0, len(image_DB) - 1)
+    def scan_dataset(input_db):
+        nonlocal steps_done
         compare_db = None
-        compare_db_steps_list = []
-        for compare_step in range(1, len(image_DB) - 1):
-            im_2_idx = image_DB.index.values[compare_step:]
-            im_1_idx = image_DB.index.values[:len(im_2_idx)]
-            compare_db_step = pd.DataFrame({"im_1": im_1_idx, "im_2": im_2_idx})
-            # compare_db_step["mean_diffs"] = np.abs(image_DB.means[im_1_idx].values - image_DB.means[im_2_idx].values)
-            compare_db_step["mean_diffs"] = np.abs(image_DB.means.values[:len(im_2_idx)] -
-                                                   image_DB.means.values[compare_step:])
-            compare_db_steps_list.append(compare_db_step)
-            if not compare_step % 100 or compare_step == len(image_DB) - 2:
-                if compare_db is not None:
-                    compare_db_steps_list = [compare_db] + compare_db_steps_list
-                compare_db = pd.concat(compare_db_steps_list, ignore_index=True)
-                compare_db = compact_compare_db()
-                compare_db_steps_list.clear()
+        compare_chunks = []
+        compare_point = 0
+        index_db = input_db.index.values
+        means_db = input_db.means.values
 
-            set_status(progress_value=compare_step)
+        for compare_point in range(1, len(input_db)):
+            compare_chunk = pd.DataFrame({"im_1": index_db[:-compare_point], "im_2": index_db[compare_point:],
+                                          "mean_diffs": np.abs(means_db[:-compare_point] - means_db[compare_point:])})
+            if compare_chunk.mean_diffs.max() > max_diff:
+                compare_chunk = compare_chunk[compare_chunk.mean_diffs <= max_diff]
+            compare_chunks.append(compare_chunk)
+            if not len(compare_chunk):
+                break
+            if not compare_point % 30:
+                compare_db = compact_compare_db(pd.concat([compare_db] + compare_chunks, ignore_index=True))
+                compare_chunks.clear()
+            set_status(progress_value=compare_point + steps_done)
             QApplication.processEvents()
-        compare_db_rest = compare_db
+        compare_db = compact_compare_db(pd.concat([compare_db] + compare_chunks, ignore_index=True))
+        steps_done += compare_point
+        return compare_db
+
+    set_status("(2/4) Fast compare image vectors", 0, len(image_DB) - 1)
+
+    if conf.duplicate_search_type == 2 and conf.second_set_size:
+        im_id_combinations = itertools.product(range(conf.second_set_size), range(conf.second_set_size, len(image_DB)))
+        idx_compare_db = pd.DataFrame(im_id_combinations, columns=["im_1", "im_2"])
+        mean_diffs = image_DB.means[idx_compare_db.im_1].values - image_DB.means[idx_compare_db.im_2].values
+        idx_compare_db["mean_diffs"] = np.abs(mean_diffs)
+        compare_db_rest = compact_compare_db(idx_compare_db)
+    elif conf.duplicate_search_type == 3:
+        folder_groups = image_DB.groupby(by="image_folders")
+        compare_db_rest_list = []
+        for folder, subset in folder_groups:
+            if len(subset) > 1:
+                compare_db_rest_list.append(scan_dataset(subset))
+        compare_db_rest = pd.concat(compare_db_rest_list, ignore_index=True)
+    else:
+        compare_db_rest = scan_dataset(image_DB)
+
+    def real_compare(to_do_db: pd.DataFrame, compare_bands, max_pairs):
+        nonlocal max_diff
+        dist_db_list = []
+        im_histograms = image_DB[compare_bands]
+        while len(to_do_db):
+            compare_db_work = to_do_db.iloc[:10000].copy()
+            to_do_db = to_do_db.iloc[10000:]
+            vect_diffs = im_histograms.loc[compare_db_work.im_1].values - \
+                         im_histograms.loc[compare_db_work.im_2].values
+            compare_db_work["dist"] = np.vectorize(la_norm)(vect_diffs).mean(axis=1)
+            if (compare_db_work.dist > max_diff).any():
+                compare_db_work = compare_db_work[compare_db_work.dist <= max_diff].copy()
+            dist_db_list.append(compare_db_work)
+
+            if len(dist_db_list) > 10:
+                dist_db_concat = pd.concat(dist_db_list).sort_values("dist")
+                if len(dist_db_concat) > max_pairs:
+                    dist_db_concat = dist_db_concat.iloc[:max_pairs].copy()
+                    max_diff = dist_db_concat.dist.iloc[-1]
+                else:
+                    max_diff = 10000000
+
+                dist_db_list = [dist_db_concat]
+
+                # dist_db_list = [pd.concat(dist_db_list).sort_values("dist").iloc[:max_pairs].copy()]
+                # max_diff = dist_db_list[0].dist.iloc[-1]
+
+            set_status(progress_value=(data.progress_max - len(to_do_db)))
+            QApplication.processEvents()
+            if local_run_index != data.run_index:
+                return
+        return pd.concat(dist_db_list).sort_values("dist").iloc[:max_pairs].copy()
 
     data.set_smooth_time(20)
-    set_status("(2/4) Comparing image vectors", 0, len(compare_db_rest))
-    distance_db = None
-    dist_db_list = []
+    set_status("(3/4) Comparing image vectors", 0, len(compare_db_rest))
+    QApplication.processEvents()
 
-    while len(compare_db_rest):
-        compare_db_work = compare_db_rest.iloc[:1000].copy()
-        compare_db_rest = compare_db_rest.iloc[1000:]
-        compare_db_work[data.working_bands] = im_histograms.loc[compare_db_work.im_1].values - im_histograms.loc[
-            compare_db_work.im_2].values
-        compare_db_work["dist"] = compare_db_work[data.working_bands].applymap(la_norm).mean(axis=1)
-        dist_db_list.append(compare_db_work[["im_1", "im_2", "mean_diffs", "dist"]])
-        if len(dist_db_list) > 10:
-            dist_db_list = [pd.concat(dist_db_list).sort_values("dist").iloc[:conf.max_pairs].copy()]
+    print("compare_db_rest size ", compare_db_rest.size)
+    max_diff = 10000000
+    if conf.do_line_images:
+        compare_db_rest = real_compare(compare_db_rest, [i + "_small" for i in data.working_lines], conf.max_pairs * 2)
+        set_status("(4/4) Comparing image vectors", 0, len(compare_db_rest))
+        compare_db_rest = real_compare(compare_db_rest, data.working_lines, conf.max_pairs)
+    else:
+        compare_db_rest = real_compare(compare_db_rest, data.working_bands, conf.max_pairs)
+    distance_db = compare_db_rest
 
-        set_status(progress_value=(data.progress_max - len(compare_db_rest)))
-        QApplication.processEvents()
-        if local_run_index != data.run_index:
-            return
-
-    distance_db = pd.concat(dist_db_list).sort_values("dist").iloc[:conf.max_pairs].copy()
     distance_db.reset_index(drop=True, inplace=True)
     im_mpx = image_DB.megapixels
     distance_db["size_compare"] = im_mpx.loc[distance_db.im_2].values / im_mpx.loc[distance_db.im_1].values
@@ -416,7 +477,7 @@ def show_compare_images_gui():
     local_run_index = data.run_index
 
     compare_wnd = CompareGUI()
-    if conf.compare_resort:
+    if conf.resort_pairs:
         compare_wnd.resort_pairs()
         if local_run_index != data.run_index:
             return
@@ -433,6 +494,7 @@ def compare_wnd_toggle():
         compare_wnd.show()
     else:
         compare_wnd.hide()
+
 
 #
 # def create_groups_reverse_tree_simple():
@@ -485,6 +547,7 @@ def create_groups_reverse_tree_smart():
     group_hg_means = group_hg_sums.copy()
     group_lists = [[i] for i in range(image_count)]
 
+    #  Combining groups
     while len(group_hg_sums) > conf.target_groups:
         if local_run_index != data.run_index: return
         set_status(progress_value=(image_count - len(group_hg_sums)))
@@ -560,7 +623,8 @@ def optimize_groups_kmeans9():
         group_im_hgs = im_hg_arr[im_list]
         group_hg_s = group_im_hgs.sum(axis=0)
         group_hg_m = np.floor_divide(group_hg_s, group_hg_s[-1])
-        local_distances = np.square(group_im_hgs - group_hg_m).sum(axis=1)
+        # local_distances = np.square(group_im_hgs - group_hg_m).sum(axis=1)
+        local_distances = np.abs(group_im_hgs - group_hg_m).sum(axis=1)
         return group_hg_s, group_hg_m, local_distances
 
     def get_updated_group_hg(group_id, im_id, do_remove=False):
@@ -574,14 +638,16 @@ def optimize_groups_kmeans9():
         group_im_hgs = im_hg_arr[im_list]
         group_hg_s = group_hg_sums[group_id] + add_hg
         group_hg_m = np.floor_divide(group_hg_s, group_hg_s[-1])
-        local_distances = np.square(group_im_hgs - group_hg_m).sum(axis=1)
+        # local_distances = np.square(group_im_hgs - group_hg_m).sum(axis=1)
+        local_distances = np.abs(group_im_hgs - group_hg_m).sum(axis=1)
         return group_hg_s, group_hg_m, local_distances, im_list
 
     def find_best_groups(im_id, im_group_current):
         if len(group_lists[im_group_current]) <= 2:
             return []
         if groups_in_check < conf.target_groups:
-            dist_to_groups = np.square(group_hg_means - im_hg_arr[im_id]).sum(axis=1)
+            # dist_to_groups = np.square(group_hg_means - im_hg_arr[im_id]).sum(axis=1)
+            dist_to_groups = np.abs(group_hg_means - im_hg_arr[im_id]).sum(axis=1)
             potential_groups = np.argpartition(dist_to_groups, groups_in_check)[:groups_in_check]
         elif check_limit_stage == 0:
             potential_groups = active_images[im_id].nonzero()[0]
@@ -605,12 +671,13 @@ def optimize_groups_kmeans9():
             active_images[:, group_id] = True
             split_cache.pop(group_id, None)
 
-    def find_best_joins(leave_group,  best_split_gain):
+    def find_best_joins(leave_group, best_split_gain):
         group_ids = [i for i in all_groups_list if i != leave_group]
         group_id_combinations = itertools.combinations(group_ids, 2)
         diff_db = dict()
         for group_1, group_2 in group_id_combinations:
-            groups_dist = np.square(group_hg_means[group_1] - group_hg_means[group_2]).sum()
+            # groups_dist = np.square(group_hg_means[group_1] - group_hg_means[group_2]).sum()
+            groups_dist = np.abs(group_hg_means[group_1] - group_hg_means[group_2]).sum()
             diff_db[groups_dist] = group_1, group_2
         best_pairs = sorted(diff_db)[:groups_in_check * 20 + 25]
         best_diff, best_data = None, None
@@ -653,7 +720,8 @@ def optimize_groups_kmeans9():
 
             farthest_im_id = np.argmax(dist_to_group[im_list])
             group_im_hgs = im_hg_arr[im_list]
-            local_distances = np.square(group_im_hgs - group_im_hgs[farthest_im_id]).sum(axis=1)
+            # local_distances = np.square(group_im_hgs - group_im_hgs[farthest_im_id]).sum(axis=1)
+            local_distances = np.abs(group_im_hgs - group_im_hgs[farthest_im_id]).sum(axis=1)
             im_distances = np.argsort(local_distances).tolist()
             best_dist, best_split = split_by_arg_list(im_list, im_distances, best_dist, best_split)
 
@@ -885,32 +953,41 @@ def get_group_color_name(group_n):
         median_value = np.percentile(one_channel, 70)
         filtered_channel = np.where(one_channel > median_value, one_channel, 0)
         group_color_one[i] = ndimage.center_of_mass(filtered_channel)[0] / 256
+        group_color_one[i] = (filtered_channel * np.linspace(0, 1 / 256, 256)).mean()
+        group_color_one[i] = (one_channel * np.linspace(0, 1 / 256, 256)).mean()
+        print((filtered_channel * np.linspace(0, 1 / 256, 256)).mean(), group_color_one[i])
 
     color_diffs = np.square(group_color_one - data.HSV_color_codes).sum(axis=1)
     best_color_id = np.argmin(color_diffs)
     return " " + data.HSV_color_names[best_color_id]
 
 
-# def export_image_vectors():
-#     local_run_index = data.run_index
-#
-#     try:
-#         os.makedirs(data.new_vector_folder)
-#     except Exception as e:
-#         print("Folder already exists", e)
-#
-#     save_db = [row[1] for row in group_db]
-#     np.savetxt(data.new_vector_folder + "Groups.csv", save_db, fmt='%1.4f', delimiter=";")
-#
-#     for group_n in range(groups_count):
-#         save_db = []
-#         for image_index in group_db[group_n][0]:
-#             save_db.append(
-#                 [image_DB[image_index][0][0]] + image_DB[image_index][1] + [image_DB[image_index][2]])
-#         np.savetxt(data.new_vector_folder + "Group_vectors_" + str(group_n + 1) + ".csv",
-#                    save_db, delimiter=";", fmt='%s', newline='\n')
-#         if local_run_index != data.run_index:
-#             return
+def export_image_vectors():
+    local_run_index = data.run_index
+
+    try:
+        os.makedirs(data.new_vector_folder)
+    except Exception as e:
+        print("Folder already exists", e)
+
+    # save_db = [row[1] for row in group_db]
+    # np.savetxt(data.new_vector_folder + "Groups.csv", save_db, fmt='%1.4f', delimiter=";")
+
+    band_names = []
+    for band in sum(conf.selected_color_bands.values(), []):
+        for sub_image in range(conf.image_divisions * conf.image_divisions):
+            band_sub = band + f"_{sub_image:d}"
+            band_names.extend([f"{band_sub}_{i:02d}" for i in range(conf.hg_bands_count)])
+
+    for group_n, group in enumerate(group_lists):
+        aa = np.array(["Filename"] + list(image_DB.image_names[group])).reshape((-1, 1))
+        save_db = np.array([band_names] + list(image_DB.hg[group].values))
+        save_db = np.hstack((aa, save_db))
+        # print(save_db)
+        np.savetxt(data.new_vector_folder + "Group_vectors_" + str(group_n + 1) + ".csv",
+                   save_db, delimiter=";", fmt='%s', newline='\n')
+        if local_run_index != data.run_index:
+            return
 
 
 def get_dominant_image(work_pair):
@@ -974,6 +1051,7 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
         self.thumb_sheet_scene.setMinimumHeight(155)
         self.thumb_sheet_scene.view.mark = self.mark_pair_visual
         self.thumb_sheet_scene.view.show_pair = self.show_pair
+        self.thumb_sheet_scene.pair_count = len(distance_db)
 
         self.paint_sheet.thumb_sheet = self.thumb_sheet_scene
 
@@ -999,7 +1077,6 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
 
         self.label_name_r.mousePressEvent = self.right_label_click
         self.label_name_l.mousePressEvent = self.left_label_click
-        self.thumb_sheet_scene.pair_count = len(distance_db)
 
     def toggle_filter_pairs(self, check=None):
         global distance_db
@@ -1027,11 +1104,16 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
         size_comparison = distance_db_row.size_compare_category
         crop_comparison = distance_db_row.crop_compare_category
 
-        if self.list_filtered == -3:   return crop_comparison == 0 == size_comparison
-        elif self.list_filtered == -4: return crop_comparison * size_comparison < 0
-        elif self.list_filtered == -5: return crop_comparison != 0 and size_comparison == 0
-        elif self.list_filtered == -6: return crop_comparison == 0 and size_comparison != 0
-        elif self.list_filtered == -7: return crop_comparison * size_comparison > 0
+        if self.list_filtered == -3:
+            return crop_comparison == 0 == size_comparison
+        elif self.list_filtered == -4:
+            return crop_comparison * size_comparison < 0
+        elif self.list_filtered == -5:
+            return crop_comparison != 0 and size_comparison == 0
+        elif self.list_filtered == -6:
+            return crop_comparison == 0 and size_comparison != 0
+        elif self.list_filtered == -7:
+            return crop_comparison * size_comparison > 0
         return False
 
     def adjust_suggestions_block(self):
@@ -1117,13 +1199,13 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
 
     def resort_pairs(self):
         global distance_db
-        set_status("(4/4) Resorting pairs...", 0, len(distance_db))
+        set_status("(4/4) Fine compare images...", 0, conf.resort_pairs)
         local_run_index = data.run_index
         data.set_smooth_time(50)
         thumb_cache = {}
         thumb_cache_size = 1000
         resized_thumb_cache = {}
-        tasks_count = len(distance_db)
+        tasks_count = conf.resort_pairs
         QApplication.processEvents()
         self.hide()
         self.animate_timer.stop()
@@ -1223,7 +1305,7 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
             resized_thumb_cache.clear()
             tasks_passed = pair_record.name + 1
             data.passed_percent = tasks_passed / tasks_count
-            text_to_go = f"Resorting pairs... ({tasks_passed}/{tasks_count})."
+            text_to_go = f"Fine compare images... ({tasks_passed}/{tasks_count})."
             set_status(text_to_go, tasks_passed, muted=True)
 
             QApplication.processEvents()
@@ -1234,46 +1316,25 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
                 return
             id_l, id_r = pair_record[:2]
 
-            # crops = [0] * 8
-            # distance = None
-            # for res_id in range(len(resolutions)):
-            #     crops = [i * 2 - (i > 0) for i in crops]
-            #     distance, crops = get_best_crop2(id_l, id_r, res_id, crops)
-
-            # if sum(crops) == 0:
-            #     crops = None
             image_l_c = get_image_thumb(id_l)
             image_r_c = get_image_thumb(id_r)
 
             distance = la_norm(np.asarray(image_l_c).astype(int) - np.asarray(image_r_c))
 
             pair_record['dist'] = int(distance)
-            # pair_record['crops'] = [0] * 8
-            # categories = {1: 1, 2: 1.1, 3: 3}
-            # if crops:
-            #     crop_size_l = (480 - crops[0] - crops[2]) * (480 - crops[1] - crops[3])
-            #     crop_size_r = (480 - crops[4] - crops[6]) * (480 - crops[5] - crops[7])
-            #     crop_size_compare = crop_size_r / crop_size_l
-            #     for category, threshold in categories.items():
-            #         if crop_size_compare > threshold:
-            #             pair_record.crop_compare_category = - category
-            #         if 1 / crop_size_compare > threshold:
-            #             pair_record.crop_compare_category = category
-
-            # resized_thumb_cache.clear()
             tasks_passed = pair_record.name + 1
             data.passed_percent = tasks_passed / tasks_count
-            text_to_go = f"Resorting pairs... ({tasks_passed}/{tasks_count})."
+            text_to_go = f"Fine compare images... ({tasks_passed}/{tasks_count})."
             set_status(text_to_go, tasks_passed, muted=True)
 
             QApplication.processEvents()
             return pair_record
 
-        if data.check_crop_levels:
+        if conf.compare_crops:
             distance_db['crops'] = None
-            distance_db = distance_db.apply(recalc_distance_with_crops, axis=1)
+            distance_db = distance_db[:conf.resort_pairs].apply(recalc_distance_with_crops, axis=1)
         else:
-            distance_db = distance_db.apply(recalc_distance_no_crops, axis=1)
+            distance_db = distance_db[:conf.resort_pairs].apply(recalc_distance_no_crops, axis=1)
 
         if local_run_index != data.run_index:
             return
@@ -1281,13 +1342,15 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
         distance_db.sort_values("dist", inplace=True)
         distance_db.reset_index(drop=True, inplace=True)
 
+        self.thumb_sheet_scene.pair_count = len(distance_db)
+
         self.push_show_size_and_crop.setEnabled(True)
         self.push_show_crop_only.setEnabled(True)
         self.push_show_mixed_only.setEnabled(True)
 
         thumb_cache.clear()
         data.set_smooth_time()
-        set_status("Resort complete. Showing image pairs.", 0, 100)
+        set_status("Fine compare complete. Showing image pairs.", 0, 100)
         main_win.redraw_dialog()
         self.push_resort_pairs.setEnabled(False)
         QApplication.processEvents()
@@ -1404,7 +1467,6 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
 
     def toggle_diff_mode(self):
         self.draw_diff_mode = not self.draw_diff_mode
-        self.paint_sheet.separate_pictures = self.draw_diff_mode
         if self.draw_diff_mode:
             self.animate_timer.start()
             self.label_percent.setFrameShadow(QtWidgets.QFrame.Sunken)
@@ -1569,7 +1631,7 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
             image_d = ImageOps.invert(image_d)
         return image_d
 
-    def show_pair(self, shift=0):
+    def show_pair(self, shift=0, with_move=True):
         if not len(distance_db):
             self.size_label_text(0)
             self.size_label_text(1)
@@ -1583,7 +1645,7 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
 
         self.current_pair += shift
         self.current_pair %= len(distance_db)
-        self.thumb_sheet_scene.update_selection()
+        self.thumb_sheet_scene.update_selection(with_move=with_move)
         self.update_all_badges()
 
         id_l, id_r = get_image_pair(self.current_pair)
@@ -1610,7 +1672,10 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
         self.paint_sheet.suggest_marks = self.get_delete_suggest(self.current_pair, True)
 
         if self.draw_diff_mode:
+            self.animate_timer.stop()
+            self.animation_frame = 1
             self.redraw_animation()
+            self.animate_timer.start()
         else:
             self.paint_sheet.pixmap_l = self.image_pixmaps[0]
             self.paint_sheet.pixmap_r = self.image_pixmaps[1]
@@ -1629,7 +1694,7 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
         thumb_colored = self.push_colored.isChecked()
 
         load_options = [im_l, im_r, crop_l, crop_r, thm_size, thumb_mode, thumb_colored, thumb_id]
-        pool.apply_async(generate_thumb_pixmap, load_options, callback=recieve_loaded_thumb)
+        pool.apply_async(generate_thumb_pixmap, load_options, callback=receive_loaded_thumb)
 
     def update_all_badges(self):
         self.thumb_sheet_scene.badges_version += 1
@@ -1691,8 +1756,8 @@ class CompareGUI(QMainWindow, CompareDialog.Ui_MainWindow):
         self.animation_frame = 1 - self.animation_frame
         self.paint_sheet.pixmap_l = self.image_pixmaps[3 - self.animation_frame]
         self.paint_sheet.pixmap_r = self.image_pixmaps[self.animation_frame]
-        if self.image_pixmaps[0] is not None and self.image_pixmaps[1] is not None:
-            self.paint_sheet.force_sizes = self.image_pixmaps[0].size(), self.image_pixmaps[1].size()
+        # if self.image_pixmaps[0] is not None and self.image_pixmaps[1] is not None:
+        #     self.paint_sheet.force_sizes = self.image_pixmaps[0].size(), self.image_pixmaps[1].size()
         self.label_name_r.setLineWidth(1 + self.animation_frame * 3)
         self.label_name_l.setLineWidth(1 + 3 - self.animation_frame * 3)
         self.paint_sheet.active_frame = self.animation_frame
@@ -1741,6 +1806,9 @@ class VisImSorterGUI(QMainWindow, VisImSorterInterface.Ui_VisImSorter):
         self.slider_max_pairs.valueChanged.connect(self.slider_max_pairs_changed)
         self.slider_max_pairs_changed()
 
+        self.slider_resort_pairs.valueChanged.connect(self.slider_resort_pairs_changed)
+        self.slider_resort_pairs_changed()
+
         self.slider_enforce_equal.valueChanged.connect(self.slider_equal_changed)
         self.slider_equal_changed()
 
@@ -1750,13 +1818,13 @@ class VisImSorterGUI(QMainWindow, VisImSorterInterface.Ui_VisImSorter):
 
         self.tab_unduplicate.hideEvent = lambda x: self.check_two_image_sets.setChecked(False)
 
-        self.check_two_image_sets.stateChanged.connect(self.two_sets_toggle)
+        self.compare_type_radio.buttonClicked.connect(self.compare_type_toggle)
 
         list_color_spaces = [self.list_color_spaces_CMYK, self.list_color_spaces_HSV,
                              self.list_color_spaces_RGB, self.list_color_spaces_YCbCr]
         for c_list in list_color_spaces:
             [c_list.item(i).setSelected(True) for i in range(3)]
-        [self.list_color_spaces.item(i).setSelected(True) for i in [0, 1]]
+        [self.list_color_spaces.item(i).setSelected(True) for i in [1, 2]]
 
         self.btn_stop.clicked.connect(self.stop_button_pressed)
         self.btn_start.clicked.connect(self.start_button_pressed)
@@ -1772,18 +1840,10 @@ class VisImSorterGUI(QMainWindow, VisImSorterInterface.Ui_VisImSorter):
                 conf.start_folder = sys.argv[1]
                 self.directory_changed()
 
-        for obj in [self.groupBox_6, self.frame_7, self.frame_3, self.group_final]:
+        for obj in [self.groupBox_6, self.frame_7, self.frame_3]:
             obj.setEnabled(False)
 
     def start_button_pressed(self):
-        # global move_files_not_copy
-        # global show_histograms
-        global export_histograms
-        # global start_folder
-        # global new_folder
-        # global create_samples
-        # global final_sort
-
         local_run_index = data.run_index
 
         conf.folder_constraint_type = self.combo_folder_constraints.currentIndex()
@@ -1791,14 +1851,12 @@ class VisImSorterGUI(QMainWindow, VisImSorterInterface.Ui_VisImSorter):
         conf.search_subdirectories = self.check_subdirs_box.isChecked()
         conf.ignore_ext = self.check_ignore_ext.isChecked()
         conf.move_files_not_copy = self.radio_move.isChecked()
-        # show_histograms = self.check_show_histograms.isChecked()
         conf.export_histograms = self.check_export_histograms.isChecked()
         conf.create_samples = self.check_create_samples.isChecked()
-        # conf.enable_stage2_grouping = self.check_stage2_grouping.isChecked()
-        # conf.stage1_grouping_type = self.combo_stage1_grouping.currentIndex()
         conf.search_duplicates = self.tab_unduplicate.isVisible()
-        # conf.compare_by_angles = self.btn_angles.isChecked()
-        conf.compare_resort = self.btn_compare_resort.isChecked()
+        conf.compare_crops = self.btn_fine_compare_crops.isChecked()
+        conf.do_line_images = self.check_do_line_images.isChecked()
+        conf.duplicate_search_type = -1 - self.compare_type_radio.checkedId()
 
         conf.final_sort = self.combo_final_sort.currentIndex() + Constants.final_sort_by_color
         if self.check_equal_name.isChecked():
@@ -1811,7 +1869,7 @@ class VisImSorterGUI(QMainWindow, VisImSorterInterface.Ui_VisImSorter):
         for item in self.list_color_spaces.selectedItems():
             space_name = str(item.text())
             w = self.group_colorspaces_all.findChild(QtWidgets.QListWidget, "list_color_spaces_" + space_name)
-            subspaces = {item.text() for item in w.selectedItems()}
+            subspaces = [item.text() for item in w.selectedItems()]
             conf.selected_color_bands[space_name] = subspaces
         selected_bands_count = sum([len(i) for i in conf.selected_color_bands.values()])
 
@@ -1870,10 +1928,21 @@ class VisImSorterGUI(QMainWindow, VisImSorterInterface.Ui_VisImSorter):
 
         # self.duplicate_tab_switched()
 
-    def two_sets_toggle(self):
-        self.select_folder_button_2.setVisible(self.check_two_image_sets.isChecked())
-        if not self.check_two_image_sets.isChecked():
+    # def two_sets_toggle(self):
+    #     self.select_folder_button_2.setVisible(self.check_two_image_sets.isChecked())
+    #     if not self.check_two_image_sets.isChecked():
+    #         conf.start_folder_2 = ""
+
+    def compare_type_toggle(self):
+        if self.compare_type_2.isChecked():
+            self.select_folder_button_2.setVisible(True)
+        else:
+            self.select_folder_button_2.setVisible(False)
             conf.start_folder_2 = ""
+
+        # self.select_folder_button_2.setVisible(self.compare_type_2.isChecked())
+        # if not self.check_two_image_sets.isChecked():
+        #     conf.start_folder_2 = ""
 
     # def duplicate_tab_switched(self):
     #     grouping = self.tab_grouping.isVisible()
@@ -1895,13 +1964,23 @@ class VisImSorterGUI(QMainWindow, VisImSorterInterface.Ui_VisImSorter):
         conf.enforce_equal_folders = (self.slider_enforce_equal.value() / 100) ** 2
         self.lbl_slider_enforce_equal.setText("%d" % (self.slider_enforce_equal.value() / 3) + "%")
 
+    def slider_resort_pairs_changed(self):
+        raw_slider = self.slider_resort_pairs.value()
+        if raw_slider == 1:
+            conf.resort_pairs = 0
+            resort_text = "Off"
+            self.btn_fine_compare_crops.setEnabled(False)
+        else:
+            conf.resort_pairs = int(conf.max_pairs * (raw_slider / 500 + .01) ** 2) + 10
+            resort_text = f"{conf.resort_pairs}"
+            self.btn_fine_compare_crops.setEnabled(True)
+        self.lbl_resort_pairs.setText(resort_text)
+
     def slider_max_pairs_changed(self):
         raw_slider = self.slider_max_pairs.value()
         conf.max_pairs = int(10 * 3 ** (0.06 * raw_slider))
         self.lbl_max_pairs.setText(f"{conf.max_pairs}")
-        # if raw_slider == 200:
-        #     conf.max_pairs = 0
-        #     self.lbl_max_pairs.setText("all")
+        self.slider_resort_pairs_changed()
 
     def drag_timeout(self):
         self.directory_changed()

@@ -1,7 +1,9 @@
 ------------  todo: Generally
 switch to pathlib
+New Stats tool: average HG, average image.
+Save image DB for later use. Do not scan image HGs if scanned before.
 
-Stats tool: average HG, average image.
+option to rename images so that their numbers form single line of the least unlike pairs
 
 ------------  todo: Grouping
 figure out what to do if two files have the same name and belong to the same folder
@@ -11,6 +13,7 @@ when searching for closest pairs, sort also by other bands, not only by HSV hue
 
 option to group only by pixel count
 asynchronous interface: enable to change settings while scanning
+
 scan forders and calculate difference between images in each
 
 rewrite stage2_regroup into using pool in multiprocessing mode
@@ -20,10 +23,9 @@ visualize clustering with animated thumbnails.
 migrate to new framework
 
 ------------  todo: De-duplication
-for fast crop search, use horizontal and vertical 1xH and Wx1 images (or histograms)
 separate rough difference (made with HG) and strict difference
-
-
+for fast crop search, use horizontal and vertical 1xH and Wx1 images (or histograms)
+draw a graph of pair distances with ability to choose a pair by clicking on that graph
 
 clear suggestion options
 use Gradients to find best fit
@@ -51,6 +53,8 @@ move view window when resizing thumbs
 
 
 
+when switching image pair, if animation is started, always start from left image and reset animation timer
+line compare: use middle and diff pixel values
 option to change subfolder naming scheme (add color into the name, number of files)
 limit panning
 load thumbs in separate thread
